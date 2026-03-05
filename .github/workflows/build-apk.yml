@@ -1,4 +1,4 @@
-name: 🔫 Build Shooter Game APK
+name: 🔫 Debug Build
 
 on:
   push:
@@ -6,271 +6,29 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android-apk:
-    name: Build Android APK
+  debug-build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
+      
       - name: ☕ Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: 🐘 Setup Gradle 8.4
+      
+      - name: 🐘 Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.4'
-
-      - name: 🐘 Generate Gradle Wrapper
-        run: |
-          gradle wrapper --gradle-version=8.4
-          chmod +x gradlew
-
-      # ── 修复 JSON 依赖 ──────────────────────────
-      - name: 🔧 Fix JSON dependency
-        run: |
-          if [ -f "core/build.gradle" ]; then
-            if ! grep -q "org.json:json" core/build.gradle; then
-              sed -i '/dependencies {/a \    implementation '\''org.json:json:20230227'\''' core/build.gradle
-            fi
-          fi
-
-      # ── 彻底修复 GameScreen.java ────────────────
-      - name: 🔧 Fix GameScreen.java
-        run: |
-          FILE="core/src/main/java/com/game/shooter/screens/GameScreen.java"
-          if [ -f "$FILE" ]; then
-            # 创建一个全新的正确版本
-            cat > "$FILE" << 'EOF'
-package com.game.shooter.screens;
-
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputProcessor;
-import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector3;
-import com.game.shooter.Config;
-import com.game.shooter.ShooterGame;
-import com.game.shooter.network.SocketManager;
-import com.game.shooter.objects.Player;
-import com.game.shooter.objects.Bullet;
-import com.game.shooter.objects.LootBox;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-import java.util.List;
-
-public class GameScreen extends ScreenAdapter implements InputProcessor {
-    private final ShooterGame game;
-    private final int[][] tileMap;
-    private final String myPlayerId;
-    
-    private OrthographicCamera worldCam;
-    private OrthographicCamera hudCam;
-    private ShapeRenderer shape;
-    
-    private List<Player> players;
-    private List<Bullet> bullets;
-    private List<LootBox> lootBoxes;
-    
-    private float inputTimer = 0;
-    private float noticeTimer = 0;
-    private String noticeMessage = "";
-    
-    private boolean joyActive = false;
-    private Vector3 joyCenter;
-    private float joyRadius = 50;
-    
-    public GameScreen(ShooterGame game, int[][] tileMap, String myPlayerId) {
-        this.game = game;
-        this.tileMap = tileMap;
-        this.myPlayerId = myPlayerId;
-        
-        players = new ArrayList<>();
-        bullets = new ArrayList<>();
-        lootBoxes = new ArrayList<>();
-        
-        worldCam = new OrthographicCamera(Config.WORLD_WIDTH, Config.WORLD_HEIGHT);
-        hudCam = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        shape = new ShapeRenderer();
-        
-        Gdx.input.setInputProcessor(this);
-    }
-    
-    public void onGameState(JSONObject state) {
-        try {
-            JSONArray pa = state.getJSONArray("players");
-            players.clear();
-            for (int i = 0; i < pa.length(); i++) {
-                JSONObject p = pa.getJSONObject(i);
-                players.add(new Player(p));
-            }
-            
-            JSONArray ba = state.getJSONArray("bullets");
-            bullets.clear();
-            for (int i = 0; i < ba.length(); i++) {
-                JSONObject b = ba.getJSONObject(i);
-                bullets.add(new Bullet(b));
-            }
-            
-            JSONArray la = state.getJSONArray("lootBoxes");
-            lootBoxes.clear();
-            for (int i = 0; i < la.length(); i++) {
-                JSONObject box = la.getJSONObject(i);
-                lootBoxes.add(new LootBox(box));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    
-    @Override
-    public void render(float delta) {
-        worldCam.update();
-        inputTimer += delta;
-        
-        if (inputTimer >= Config.INPUT_SEND_INTERVAL) {
-            // 发送输入
-            inputTimer = 0;
-        }
-        
-        if (noticeTimer > 0) {
-            noticeTimer -= delta;
-        }
-        
-        Gdx.gl.glClearColor(0.1f, 0.13f, 0.1f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        
-        shape.setProjectionMatrix(worldCam.combined);
-        renderMap();
-        renderLootBoxes();
-        renderPlayers();
-        renderBullets();
-        
-        shape.setProjectionMatrix(hudCam.combined);
-        game.batch.setProjectionMatrix(hudCam.combined);
-        renderHUD();
-    }
-    
-    private void renderMap() {
-        // 渲染地图
-    }
-    
-    private void renderLootBoxes() {
-        // 渲染战利品箱
-    }
-    
-    private void renderPlayers() {
-        // 渲染玩家
-    }
-    
-    private void renderBullets() {
-        // 渲染子弹
-    }
-    
-    private void renderHUD() {
-        // 渲染HUD
-    }
-    
-    // InputProcessor 方法
-    @Override
-    public boolean keyDown(int keycode) {
-        return false;
-    }
-    
-    @Override
-    public boolean keyUp(int keycode) {
-        return false;
-    }
-    
-    @Override
-    public boolean keyTyped(char character) {
-        return false;
-    }
-    
-    @Override
-    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        return false;
-    }
-    
-    @Override
-    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        return false;
-    }
-    
-    @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer) {
-        return false;
-    }
-    
-    @Override
-    public boolean mouseMoved(int screenX, int screenY) {
-        return false;
-    }
-    
-    @Override
-    public boolean scrolled(float amountX, float amountY) {
-        return false;
-    }
-    
-    // 新增的 touchCancelled 方法
-    @Override
-    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
-        return false;
-    }
-}
-EOF
-            echo "✅ GameScreen.java 已完全重建"
-          fi
-
-      # ── 修复 MenuScreen 的类型转换 ────────────
-      - name: 🔧 Fix MenuScreen
-        run: |
-          FILE="core/src/main/java/com/game/shooter/screens/MenuScreen.java"
-          if [ -f "$FILE" ]; then
-            sed -i 's/TextureRegionDrawable/com.badlogic.gdx.graphics.g2d.TextureRegionDrawable/g' "$FILE"
-            echo "✅ MenuScreen 已修复"
-          fi
-
+      
+      - name: 🔧 Generate wrapper
+        run: gradle wrapper --gradle-version=8.4
+      
       - name: 📝 Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+      
+      - name: 🔨 Build
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-
-      - name: ✅ Accept Android SDK Licenses
-        run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_HOME/licenses/android-sdk-license"
-
-      - name: 📦 Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: 🔨 Build Debug APK
-        run: |
+          chmod +x gradlew
           ./gradlew :android:assembleDebug --stacktrace
-
-      - name: 📤 Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shooter-game-apk-${{ github.run_number }}
-          path: |
-            **/*.apk
-          if-no-files-found: warn
-          retention-days: 30
