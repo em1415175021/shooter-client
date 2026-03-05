@@ -1,4 +1,4 @@
-name: 🔫 Build Shooter Game APK
+name: 🔫 Debug Project Structure
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android-apk:
-    name: Build Android APK
+  debug-project:
+    name: Debug Project Structure
     runs-on: ubuntu-latest
 
     steps:
@@ -15,83 +15,51 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      # ── 2. 配置 JDK 17 ──────────────────────────────
-      - name: ☕ Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      # ── 3. 检查项目结构 ──────────────────────────────
-      - name: 🔍 Check Project Structure
+      # ── 2. 详细显示项目结构 ──────────────────────────
+      - name: 🔍 Show Full Project Structure
         run: |
-          echo "=== 当前目录内容 ==="
+          echo "=== 当前目录所有文件 ==="
           ls -la
-          echo "=== 检查 android 目录 ==="
-          if [ -d "android" ]; then
-            echo "android 目录存在"
-            ls -la android/
-          fi
+          
+          echo -e "\n=== 递归查找所有构建相关文件 ==="
+          echo "--- 查找 gradle 相关文件 ---"
+          find . -name "*gradle*" -type f | sort
+          
+          echo -e "\n--- 查找 build.gradle 文件 ---"
+          find . -name "build.gradle*" -type f | sort
+          
+          echo -e "\n--- 查找 settings.gradle 文件 ---"
+          find . -name "settings.gradle*" -type f | sort
+          
+          echo -e "\n--- 查找 gradlew 文件 ---"
+          find . -name "gradlew*" -type f | sort
+          
+          echo -e "\n--- 查找 apk 相关文件 ---"
+          find . -name "*.apk" -type f | sort
+          
+          echo -e "\n=== 显示重要文件内容 ==="
+          # 显示根目录下的重要文件
+          for file in package.json pubspec.yaml; do
+            if [ -f "$file" ]; then
+              echo -e "\n--- $file 内容 ---"
+              cat "$file"
+            fi
+          done
+          
+          # 显示 gradle 文件内容
+          for file in $(find . -name "build.gradle" -o -name "settings.gradle" | head -3); do
+            echo -e "\n--- $file 内容前20行 ---"
+            head -20 "$file" 2>/dev/null || true
+          done
 
-      # ── 4. 授予 gradlew 执行权限（修复版）────────────
-      - name: 🔑 Grant execute permission for gradlew
+      # ── 3. 检查 Android SDK 环境 ────────────────────
+      - name: 📱 Check Android Environment
         run: |
-          # 只设置存在的文件权限
-          if [ -f "android/gradlew" ]; then
-            chmod +x android/gradlew
-            echo "✅ 已设置 android/gradlew 执行权限"
-          elif [ -f "gradlew" ]; then
-            chmod +x gradlew
-            echo "✅ 已设置 gradlew 执行权限"
-          else
-            echo "⚠️ 未找到 gradlew 文件，继续执行"
+          echo "=== Android 环境 ==="
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          
+          echo -e "\n=== SDK 工具 ==="
+          if [ -d "$ANDROID_HOME/cmdline-tools" ]; then
+            ls -la "$ANDROID_HOME/cmdline-tools"
           fi
-        shell: /usr/bin/bash {0}
-
-      # ── 5. 创建 local.properties ─────────────────────
-      - name: 📝 Create local.properties
-        run: |
-          if [ -d "android" ]; then
-            echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-            echo "✅ 已创建 android/local.properties"
-          else
-            echo "sdk.dir=$ANDROID_HOME" > local.properties
-            echo "✅ 已创建 local.properties"
-          fi
-
-      # ── 6. Gradle 缓存 ───────────────────────────────
-      - name: 📦 Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # ── 7. 构建 APK ──────────────────────────────────
-      - name: 🔨 Build APK
-        run: |
-          if [ -f "android/gradlew" ]; then
-            echo "使用 android/gradlew 构建"
-            cd android
-            ./gradlew assembleDebug --stacktrace
-          elif [ -f "gradlew" ]; then
-            echo "使用 gradlew 构建"
-            ./gradlew assembleDebug --stacktrace
-          else
-            echo "❌ 未找到 gradlew，无法构建"
-            exit 1
-          fi
-
-      # ── 8. 查找并上传 APK ────────────────────────────
-      - name: 📤 Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shooter-game-apk-${{ github.run_number }}
-          path: |
-            **/*.apk
-          if-no-files-found: warn
-          retention-days: 30
