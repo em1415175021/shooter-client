@@ -1,4 +1,4 @@
-name: 🔫 建造射击游戏 APK
+name: 🔫 Build Shooter Game APK
 
 on:
   push:
@@ -22,87 +22,124 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. 打印SDK路径（确认路径正确）────────────────
-      - name: 🔍 Check Android SDK Path
+      # ── 3. 授予 gradlew 执行权限 ────────────────────
+      - name: 🔑 Grant execute permission for gradlew
         run: |
-          echo "ANDROID_HOME = $ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
-          ls $ANDROID_HOME/platforms/ || echo "platforms directory empty"
+          chmod +x gradlew
+          # 如果 gradlew 在 android 目录下
+          if [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
+          fi
 
-      # ── 4. 手动写入 Android SDK License 文件 ─────────
-      #  这是 CI 环境中接受协议的标准方法
-      - name: ✅ Accept Android SDK Licenses
-        run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          # android-sdk-license
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >  "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_HOME/licenses/android-sdk-license"
-          # android-sdk-preview-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" >  "$ANDROID_HOME/licenses/android-sdk-preview-license"
-          # android-sdk-arm-dbt-license
-          echo "859f317696f67ef3d7f30a50a5560e7834b43903" >  "$ANDROID_HOME/licenses/android-sdk-arm-dbt-license"
-          echo "✅ License files written to $ANDROID_HOME/licenses"
-          ls "$ANDROID_HOME/licenses/"
-
-      # ── 5. 安装缺失的 SDK 组件 ───────────────────────
-      - name: 📱 Install Android SDK Platform 34
-        run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
-            --sdk_root=$ANDROID_HOME
-          echo "✅ SDK components installed"
-
-      # ── 6. 创建 local.properties（告诉 Gradle SDK 位置）
+      # ── 4. 创建 local.properties ─────────────────────
       - name: 📝 Create local.properties
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          cat local.properties
+          # 如果项目根目录有 android 子目录
+          if [ -d "android" ]; then
+            echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+            cat android/local.properties
+          else
+            echo "sdk.dir=$ANDROID_HOME" > local.properties
+            cat local.properties
+          fi
 
-      # ── 7. Gradle 缓存 ───────────────────────────────
+      # ── 5. 检查项目结构 ──────────────────────────────
+      - name: 🔍 Check Project Structure
+        run: |
+          echo "=== 当前目录内容 ==="
+          ls -la
+          echo "=== 检查 Android 模块 ==="
+          if [ -d "android" ]; then
+            echo "android 目录存在"
+            ls -la android/
+          fi
+          echo "=== 检查 app 模块 ==="
+          if [ -d "app" ]; then
+            echo "app 目录存在"
+            ls -la app/
+          fi
+          echo "=== 检查 settings.gradle ==="
+          find . -name "settings.gradle*" -type f
+
+      # ── 6. Gradle 缓存 ───────────────────────────────
       - name: 📦 Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      # ── 8. 安装 Gradle 8.4 ──────────────────────────
-      - name: 🐘 Setup Gradle 8.4
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.4'
-
-      # ── 9. 构建 Debug APK ────────────────────────────
-      #  注意：不要在 env 块里设置 ANDROID_HOME，
-      #  让 runner 自带的环境变量自然传入即可
+      # ── 7. 自动检测并构建 APK ────────────────────────
       - name: 🔨 Build Debug APK
-        run: gradle :android:assembleDebug --stacktrace
+        run: |
+          # 检测并构建正确的模块
+          if [ -f "android/gradlew" ]; then
+            # 项目在 android 子目录中
+            cd android
+            ./gradlew assembleDebug --stacktrace
+          elif [ -f "gradlew" ]; then
+            # gradlew 在根目录
+            # 检测可用的模块
+            MODULES=$(./gradlew projects --no-daemon | grep -o "Project ':[a-zA-Z0-9_-]*'" | cut -d"'" -f2)
+            echo "可用模块: $MODULES"
+            
+            # 尝试构建常见模块名
+            if echo "$MODULES" | grep -q ":app"; then
+              echo "找到 :app 模块，开始构建"
+              ./gradlew :app:assembleDebug --stacktrace
+            elif echo "$MODULES" | grep -q ":android"; then
+              echo "找到 :android 模块，开始构建"
+              ./gradlew :android:assembleDebug --stacktrace
+            else
+              echo "未找到标准模块，尝试构建所有模块"
+              ./gradlew assembleDebug --stacktrace
+            fi
+          else
+            echo "错误：未找到 gradlew 文件"
+            exit 1
+          fi
 
-      # ── 10. 查找 APK ─────────────────────────────────
-      - name: 📊 Show Build Result
+      # ── 8. 查找 APK ─────────────────────────────────
+      - name: 📊 Find and List APKs
         if: always()
         run: |
-          echo "=== 查找 APK ==="
-          find . -name "*.apk" 2>/dev/null || echo "未找到 APK"
+          echo "=== 查找所有 APK 文件 ==="
+          find . -name "*.apk" -type f | while read apk; do
+            echo "✅ 找到 APK: $apk"
+            ls -la "$apk"
+          done
+          
+          # 如果没有找到 APK，显示更多信息
+          if [ $(find . -name "*.apk" -type f | wc -l) -eq 0 ]; then
+            echo "❌ 未找到 APK 文件"
+            echo "=== 检查 build 目录 ==="
+            find . -type d -name "build" -maxdepth 3 | while read build_dir; do
+              echo "检查: $build_dir"
+              ls -la "$build_dir" 2>/dev/null || true
+            done
+          fi
 
-      # ── 11. 上传 APK ─────────────────────────────────
+      # ── 9. 上传 APK ─────────────────────────────────
       - name: 📤 Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: shooter-game-apk-${{ github.run_number }}
-          path: android/build/outputs/apk/debug/android-debug.apk
+          path: |
+            **/*.apk
           retention-days: 30
+          if-no-files-found: warn
 
-      # ── 12. 失败时上传日志 ───────────────────────────
-      - name: 📋 Upload Logs on Failure
+      # ── 10. 失败时上传构建报告 ───────────────────────
+      - name: 📋 Upload Build Reports on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ github.run_number }}
-          path: android/build/reports/
+          name: build-reports-${{ github.run_number }}
+          path: |
+            **/build/reports/
+            **/build/outputs/
           retention-days: 7
