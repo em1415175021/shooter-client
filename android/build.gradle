@@ -12,6 +12,7 @@ configurations {
 android {
     namespace 'com.game.shooter'
     compileSdk 34
+    buildToolsVersion "34.0.0"
 
     defaultConfig {
         applicationId "com.game.shooter"

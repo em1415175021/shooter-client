@@ -22,76 +22,74 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. 接受 Android SDK 协议 & 安装必要组件 ─────
-      - name: 📱 Setup Android SDK Components
+      # ── 3. 打印SDK路径（确认路径正确）────────────────
+      - name: 🔍 Check Android SDK Path
         run: |
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-          # 接受所有 License
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
-          # 确保 build-tools 34 和 platform 34 存在
+          echo "ANDROID_HOME = $ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+          ls $ANDROID_HOME/platforms/ || echo "platforms directory empty"
+
+      # ── 4. 手动写入 Android SDK License 文件 ─────────
+      #  这是 CI 环境中接受协议的标准方法
+      - name: ✅ Accept Android SDK Licenses
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          # android-sdk-license
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >  "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_HOME/licenses/android-sdk-license"
+          # android-sdk-preview-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" >  "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          # android-sdk-arm-dbt-license
+          echo "859f317696f67ef3d7f30a50a5560e7834b43903" >  "$ANDROID_HOME/licenses/android-sdk-arm-dbt-license"
+          echo "✅ License files written to $ANDROID_HOME/licenses"
+          ls "$ANDROID_HOME/licenses/"
+
+      # ── 5. 安装缺失的 SDK 组件 ───────────────────────
+      - name: 📱 Install Android SDK Platform 34
+        run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platforms;android-34" \
             "build-tools;34.0.0" \
-            "platform-tools" 2>/dev/null || true
-          echo "✅ Android SDK setup complete"
+            --sdk_root=$ANDROID_HOME
+          echo "✅ SDK components installed"
 
-      # ── 4. Gradle 依赖缓存 ──────────────────────────
+      # ── 6. 创建 local.properties（告诉 Gradle SDK 位置）
+      - name: 📝 Create local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
+
+      # ── 7. Gradle 缓存 ───────────────────────────────
       - name: 📦 Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 5. 安装 Gradle 8.4 ──────────────────────────
+      # ── 8. 安装 Gradle 8.4 ──────────────────────────
       - name: 🐘 Setup Gradle 8.4
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.4'
 
-      # ── 6. 验证项目结构 ──────────────────────────────
-      - name: 🔍 Verify Project Structure
-        run: |
-          echo "=== 项目文件列表 ==="
-          find . -name "*.gradle" | head -20
-          echo "=== settings.gradle ==="
-          cat settings.gradle
-          echo "=== android/build.gradle ==="
-          cat android/build.gradle
-          echo "=== AndroidManifest.xml ==="
-          cat android/AndroidManifest.xml
-
-      # ── 7. 构建 Debug APK（含详细错误输出）─────────
+      # ── 9. 构建 Debug APK ────────────────────────────
+      #  注意：不要在 env 块里设置 ANDROID_HOME，
+      #  让 runner 自带的环境变量自然传入即可
       - name: 🔨 Build Debug APK
-        run: |
-          gradle :android:assembleDebug \
-            --stacktrace \
-            --info \
-            --no-daemon \
-            -PANDROID_HOME=$ANDROID_HOME
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        run: gradle :android:assembleDebug --stacktrace
 
-      # ── 8. 查找并显示 APK 信息 ─────────────────────
+      # ── 10. 查找 APK ─────────────────────────────────
       - name: 📊 Show Build Result
         if: always()
         run: |
-          echo "=== 查找所有 APK 文件 ==="
+          echo "=== 查找 APK ==="
           find . -name "*.apk" 2>/dev/null || echo "未找到 APK"
-          APK="android/build/outputs/apk/debug/android-debug.apk"
-          if [ -f "$APK" ]; then
-            SIZE=$(du -sh "$APK" | cut -f1)
-            echo "✅ 构建成功！APK 大小：$SIZE"
-          else
-            echo "❌ APK 未生成，请查看上方构建日志"
-          fi
 
-      # ── 9. 上传 APK 制品 ───────────────────────────
+      # ── 11. 上传 APK ─────────────────────────────────
       - name: 📤 Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -100,13 +98,11 @@ jobs:
           path: android/build/outputs/apk/debug/android-debug.apk
           retention-days: 30
 
-      # ── 10. 如果失败，上传完整日志供排查 ──────────
-      - name: 📋 Upload Build Logs on Failure
+      # ── 12. 失败时上传日志 ───────────────────────────
+      - name: 📋 Upload Logs on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-${{ github.run_number }}
-          path: |
-            android/build/reports/
-            **/*.log
+          path: android/build/reports/
           retention-days: 7
