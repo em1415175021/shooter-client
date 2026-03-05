@@ -1,0 +1,108 @@
+apply plugin: 'com.android.application'
+
+// ⚠️ 必须在 dependencies 块之前声明 natives 配置
+configurations {
+    natives
+    all {
+        // 排除旧版 org.json，使用 Android 内置版本
+        exclude group: 'org.json', module: 'json'
+    }
+}
+
+android {
+    namespace 'com.game.shooter'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.game.shooter"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // 告诉 Android 去 libs/ 目录找原生 .so 库
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/DEPENDENCIES',
+                'META-INF/LICENSE',
+                'META-INF/LICENSE.txt',
+                'META-INF/NOTICE',
+                'META-INF/NOTICE.txt',
+                'META-INF/*.kotlin_module'
+            ]
+        }
+    }
+}
+
+dependencies {
+    implementation project(':core')
+
+    // LibGDX Android 后端
+    implementation "com.badlogicgames.gdx:gdx-backend-android:1.12.0"
+
+    // MultiDex 支持
+    implementation 'androidx.multidex:multidex:2.0.1'
+
+    // LibGDX 各平台原生库（.so 文件）
+    natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
+}
+
+// ── 拷贝 LibGDX 原生 .so 库到 libs 目录 ──
+// Gradle 8.x 语法：tasks.register
+tasks.register('copyAndroidNatives') {
+    doFirst {
+        ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'].each { abi ->
+            file("libs/${abi}/").mkdirs()
+        }
+    }
+    doLast {
+        configurations.natives.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            def name = artifact.name
+            def outputDir = null
+            if      (name.contains('natives-arm64-v8a'))    outputDir = file('libs/arm64-v8a')
+            else if (name.contains('natives-armeabi-v7a'))  outputDir = file('libs/armeabi-v7a')
+            else if (name.contains('natives-x86_64'))       outputDir = file('libs/x86_64')
+            else if (name.contains('natives-x86'))          outputDir = file('libs/x86')
+
+            if (outputDir != null) {
+                copy {
+                    from zipTree(artifact.file)
+                    into outputDir
+                    include '*.so'
+                }
+                println "✅ Copied natives to: ${outputDir}"
+            }
+        }
+    }
+}
+
+// assembleDebug/assembleRelease 之前自动运行 copyAndroidNatives
+afterEvaluate {
+    tasks.matching { it.name == 'preBuild' }.configureEach {
+        it.dependsOn('copyAndroidNatives')
+    }
+}

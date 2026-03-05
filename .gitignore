@@ -1,0 +1,18 @@
+# ── Gradle 编译产物 ──
+.gradle/
+build/
+*/build/
+
+# ── Android Studio 本地配置 ──
+local.properties
+*.iml
+.idea/
+
+# ── 日志 ──
+*.log
+
+# ── MacOS ──
+.DS_Store
+
+# ── Windows ──
+Thumbs.db

@@ -1,0 +1,112 @@
+name: 🔫 Build Shooter Game APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-android-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. 拉取代码 ──────────────────────────────────
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. 配置 JDK 17 ──────────────────────────────
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ── 3. 接受 Android SDK 协议 & 安装必要组件 ─────
+      - name: 📱 Setup Android SDK Components
+        run: |
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          # 接受所有 License
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          # 确保 build-tools 34 和 platform 34 存在
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "platform-tools" 2>/dev/null || true
+          echo "✅ Android SDK setup complete"
+
+      # ── 4. Gradle 依赖缓存 ──────────────────────────
+      - name: 📦 Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ── 5. 安装 Gradle 8.4 ──────────────────────────
+      - name: 🐘 Setup Gradle 8.4
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+
+      # ── 6. 验证项目结构 ──────────────────────────────
+      - name: 🔍 Verify Project Structure
+        run: |
+          echo "=== 项目文件列表 ==="
+          find . -name "*.gradle" | head -20
+          echo "=== settings.gradle ==="
+          cat settings.gradle
+          echo "=== android/build.gradle ==="
+          cat android/build.gradle
+          echo "=== AndroidManifest.xml ==="
+          cat android/AndroidManifest.xml
+
+      # ── 7. 构建 Debug APK（含详细错误输出）─────────
+      - name: 🔨 Build Debug APK
+        run: |
+          gradle :android:assembleDebug \
+            --stacktrace \
+            --info \
+            --no-daemon \
+            -PANDROID_HOME=$ANDROID_HOME
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+
+      # ── 8. 查找并显示 APK 信息 ─────────────────────
+      - name: 📊 Show Build Result
+        if: always()
+        run: |
+          echo "=== 查找所有 APK 文件 ==="
+          find . -name "*.apk" 2>/dev/null || echo "未找到 APK"
+          APK="android/build/outputs/apk/debug/android-debug.apk"
+          if [ -f "$APK" ]; then
+            SIZE=$(du -sh "$APK" | cut -f1)
+            echo "✅ 构建成功！APK 大小：$SIZE"
+          else
+            echo "❌ APK 未生成，请查看上方构建日志"
+          fi
+
+      # ── 9. 上传 APK 制品 ───────────────────────────
+      - name: 📤 Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shooter-game-apk-${{ github.run_number }}
+          path: android/build/outputs/apk/debug/android-debug.apk
+          retention-days: 30
+
+      # ── 10. 如果失败，上传完整日志供排查 ──────────
+      - name: 📋 Upload Build Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_number }}
+          path: |
+            android/build/reports/
+            **/*.log
+          retention-days: 7
