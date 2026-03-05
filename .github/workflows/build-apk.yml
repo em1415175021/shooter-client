@@ -11,34 +11,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ── 1. 拉取代码 ──────────────────────────────────
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
+      # ── 2. 配置 JDK 17 ──────────────────────────────
       - name: ☕ Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 关键修复：指定 Gradle 版本
+      # ── 3. 设置 Gradle 8.4 ──────────────────────────
       - name: 🐘 Setup Gradle 8.4
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.4'
 
-      # 生成对应版本的 Wrapper
+      # ── 4. 生成 Gradle Wrapper ──────────────────────
       - name: 🐘 Generate Gradle Wrapper
         run: |
           gradle wrapper --gradle-version=8.4
           chmod +x gradlew
-          ./gradlew --version  # 打印版本信息用于调试
+          ./gradlew --version
 
+      # ── 5. 🔧 修复 JSON 依赖 ─────────────────────────
+      - name: 🔧 Fix JSON dependency in core module
+        run: |
+          if [ -f "core/build.gradle" ]; then
+            # 检查是否已有 dependencies 块
+            if ! grep -q "dependencies" core/build.gradle; then
+              # 如果没有 dependencies 块，添加一个
+              echo -e "\ndependencies {\n    implementation 'org.json:json:20230227'\n}" >> core/build.gradle
+              echo "✅ 已添加 dependencies 块和 JSON 依赖"
+            else
+              # 如果有 dependencies 块但缺少 JSON 依赖
+              if ! grep -q "org.json:json" core/build.gradle; then
+                # 在 dependencies 块中添加 JSON 依赖
+                sed -i '/dependencies {/a \    implementation '\''org.json:json:20230227'\''' core/build.gradle
+                echo "✅ 已在现有 dependencies 块中添加 JSON 依赖"
+              else
+                echo "✅ JSON 依赖已存在"
+              fi
+            fi
+            # 显示修改后的文件
+            echo "=== 修改后的 core/build.gradle ==="
+            cat core/build.gradle
+          else
+            echo "❌ core/build.gradle 不存在"
+            exit 1
+          fi
+
+      # ── 6. 📝 创建 local.properties ──────────────────
       - name: 📝 Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           echo "✅ local.properties:"
           cat local.properties
 
+      # ── 7. ✅ 接受 Android SDK 许可 ──────────────────
       - name: ✅ Accept Android SDK Licenses
         run: |
           mkdir -p "$ANDROID_HOME/licenses"
@@ -46,6 +77,7 @@ jobs:
           echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_HOME/licenses/android-sdk-license"
 
+      # ── 8. 📦 Gradle 缓存 ────────────────────────────
       - name: 📦 Cache Gradle
         uses: actions/cache@v4
         with:
@@ -56,10 +88,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      # ── 9. 🔨 构建 Debug APK ─────────────────────────
       - name: 🔨 Build Debug APK
         run: |
           ./gradlew :android:assembleDebug --stacktrace
 
+      # ── 10. 📊 查找 APK 文件 ─────────────────────────
+      - name: 📊 Find APK Files
+        if: always()
+        run: |
+          echo "=== 查找 APK 文件 ==="
+          find . -name "*.apk" -type f | while read apk; do
+            echo "✅ 找到 APK: $apk"
+            ls -la "$apk"
+          done
+
+      # ── 11. 📤 上传 APK ──────────────────────────────
       - name: 📤 Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -70,6 +114,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # ── 12. 📋 失败时上传构建报告 ────────────────────
       - name: 📋 Upload Build Reports on Failure
         if: failure()
         uses: actions/upload-artifact@v4
