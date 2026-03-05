@@ -1,4 +1,29 @@
-name: 🔫 Build Shooter Game APK
+# ── 6. 🔧 彻底修复 GameScreen.java ────────────
+- name: 🔧 Completely fix GameScreen.java
+  run: |
+    FILE="core/src/main/java/com/game/shooter/screens/GameScreen.java"
+    if [ -f "$FILE" ]; then
+      # 备份原文件
+      cp "$FILE" "${FILE}.bak"
+      
+      # 删除所有错误插入的 touchCancelled 方法和多余的 @Override
+      sed -i '/touchCancelled/d' "$FILE"
+      sed -i '/@Override/d' "$FILE"
+      
+      # 在文件末尾添加正确的 touchCancelled 方法
+      echo "" >> "$FILE"
+      echo "    @Override" >> "$FILE"
+      echo "    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {" >> "$FILE"
+      echo "        return false;" >> "$FILE"
+      echo "    }" >> "$FILE"
+      echo "}" >> "$FILE"
+      
+      # 确保只有一个类结束符
+      sed -i '/}$/d' "$FILE"
+      echo "}" >> "$FILE"
+      
+      echo "✅ GameScreen.java 已修复"
+    finame: 🔫 Build Shooter Game APK
 
 on:
   push:
