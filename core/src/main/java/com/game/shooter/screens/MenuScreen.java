@@ -25,9 +25,6 @@ import com.game.shooter.network.SocketManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * 主菜单界面 - 高清中文版（使用 FreeType 字体）
- */
 public class MenuScreen extends ScreenAdapter {
 
     private final ShooterGame game;
@@ -37,51 +34,55 @@ public class MenuScreen extends ScreenAdapter {
     private TextField roomCodeField;
     private Label statusLabel;
 
+    private BitmapFont uiFont;
+    private BitmapFont titleFont;
+
     public MenuScreen(ShooterGame game) {
         this.game = game;
         stage = new Stage(new ScreenViewport());
-        skin = buildSkin(); // 在 buildSkin 中生成所有资源
+        generateFonts();      // 先生成字体
+        skin = buildSkin();   // 再构建皮肤
         buildUI();
         Gdx.input.setInputProcessor(stage);
     }
 
-    /** 构建皮肤（包含高清字体生成） */
+    private void generateFonts() {
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/simhei.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        parameter.size = 48;
+        parameter.characters = "你我他的一是了在人有来创建房间加入房间服务器地址0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz——➕🚪错误成功连接等待：";
+        BitmapFont baseFont = generator.generateFont(parameter);
+        generator.dispose();
+
+        // 使用 baseFont 的数据和 regions 创建新的字体实例
+        uiFont = new BitmapFont(baseFont.getData(), baseFont.getRegions(), baseFont.usesIntegerPositions());
+        uiFont.getData().setScale(1.2f);
+
+        titleFont = new BitmapFont(baseFont.getData(), baseFont.getRegions(), baseFont.usesIntegerPositions());
+        titleFont.getData().setScale(1.8f);
+    }
+
     private Skin buildSkin() {
         Skin skin = new Skin();
 
-        // 1. 使用 FreeType 生成高清中文字体
-        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/simhei.ttf"));
-        FreeTypeFontGenerator.FreeTypeFontParameter param = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        param.size = 48; // 基础像素大小
-        // 包含所有可能用到的字符（中文、英文、数字、符号）
-        param.characters = "你我他的一是了在人有来创建房间加入房间服务器地址0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz——➕🚪错误成功连接等待：";
-        BitmapFont baseFont = generator.generateFont(param);
-        generator.dispose();
-
-        // 创建两种字体变体（通过缩放）
-        BitmapFont uiFont = new BitmapFont(baseFont.getData());
-        uiFont.getData().setScale(1.2f); // UI字体大小
-        BitmapFont titleFont = new BitmapFont(baseFont.getData());
-        titleFont.getData().setScale(1.8f); // 标题字体大小
-
-        // 将字体添加到皮肤
-        skin.add("default-font", uiFont);
-        skin.add("title-font", titleFont);
-
-        // 2. 白色像素纹理（用于按钮背景）
+        // 白色像素纹理
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
         skin.add("white", new Texture(pm));
         pm.dispose();
 
-        // 3. Label 样式
+        // 添加字体到皮肤
+        skin.add("default-font", uiFont);
+        skin.add("title-font", titleFont);
+
+        // Label 样式
         Label.LabelStyle labelStyle = new Label.LabelStyle();
         labelStyle.font = skin.getFont("default-font");
         labelStyle.fontColor = Color.WHITE;
         skin.add("default", labelStyle);
 
-        // 4. TextField 样式
+        // TextField 样式
         TextField.TextFieldStyle tfStyle = new TextField.TextFieldStyle();
         tfStyle.font = skin.getFont("default-font");
         tfStyle.fontColor = Color.WHITE;
@@ -91,7 +92,7 @@ public class MenuScreen extends ScreenAdapter {
         tfStyle.cursor = tintDrawable(skin, Color.WHITE);
         skin.add("default", tfStyle);
 
-        // 5. 蓝色按钮样式（创建房间）
+        // 蓝色按钮样式
         TextButton.TextButtonStyle btnBlue = new TextButton.TextButtonStyle();
         btnBlue.font = skin.getFont("default-font");
         btnBlue.fontColor = Color.WHITE;
@@ -100,7 +101,7 @@ public class MenuScreen extends ScreenAdapter {
         btnBlue.over = tintDrawable(skin, new Color(0.25f, 0.6f, 1.0f, 1f));
         skin.add("default", btnBlue);
 
-        // 6. 绿色按钮样式（加入房间）
+        // 绿色按钮样式
         TextButton.TextButtonStyle btnGreen = new TextButton.TextButtonStyle();
         btnGreen.font = skin.getFont("default-font");
         btnGreen.fontColor = Color.WHITE;
@@ -112,34 +113,28 @@ public class MenuScreen extends ScreenAdapter {
         return skin;
     }
 
-    /** 生成带颜色的 Drawable */
     private Drawable tintDrawable(Skin skin, Color color) {
         return new TextureRegionDrawable(skin.getRegion("white")).tint(color);
     }
 
-    /** 构建界面布局 */
     private void buildUI() {
         Table root = new Table();
         root.setFillParent(true);
         root.pad(30);
         stage.addActor(root);
 
-        // 标题（使用标题字体）
         Label title = new Label("  3人射击对战  ", new Label.LabelStyle(skin.getFont("title-font"), new Color(0.4f, 0.9f, 1f, 1f)));
         root.add(title).colspan(2).padBottom(10).row();
 
-        // 副标题
         Label subtitle = new Label("非局域网实时联机 · 3人吃鸡", skin);
         subtitle.setColor(new Color(0.7f, 0.7f, 0.7f, 1f));
         root.add(subtitle).colspan(2).padBottom(40).row();
 
-        // 服务器地址
         root.add(makeLabel("服务器地址:")).right().padRight(12);
         serverUrlField = new TextField(Config.DEFAULT_SERVER_URL, skin);
         serverUrlField.setMessageText("https://your-app.up.railway.app");
         root.add(serverUrlField).width(480).height(65).padBottom(20).row();
 
-        // 创建房间按钮
         TextButton createBtn = new TextButton("  ➕  创建房间  ", skin);
         createBtn.addListener(new ClickListener() {
             @Override
@@ -149,19 +144,16 @@ public class MenuScreen extends ScreenAdapter {
         });
         root.add(createBtn).colspan(2).width(450).height(80).padBottom(30).row();
 
-        // 分隔线
         Label orLabel = makeLabel("—— 或者加入朋友的房间 ——");
         orLabel.setColor(new Color(0.6f, 0.6f, 0.6f, 1f));
         root.add(orLabel).colspan(2).padBottom(20).row();
 
-        // 房间码输入
         root.add(makeLabel("房 间 码:")).right().padRight(12);
         roomCodeField = new TextField("", skin);
         roomCodeField.setMessageText("输入6位房间码 (如: AB12CD)");
         roomCodeField.setMaxLength(6);
         root.add(roomCodeField).width(480).height(65).padBottom(20).row();
 
-        // 加入房间按钮
         TextButton joinBtn = new TextButton("  🚪  加入房间  ", skin, "green");
         joinBtn.addListener(new ClickListener() {
             @Override
@@ -171,7 +163,6 @@ public class MenuScreen extends ScreenAdapter {
         });
         root.add(joinBtn).colspan(2).width(450).height(80).padBottom(30).row();
 
-        // 状态标签
         statusLabel = new Label("", skin);
         statusLabel.setColor(Color.YELLOW);
         root.add(statusLabel).colspan(2).row();
@@ -181,8 +172,7 @@ public class MenuScreen extends ScreenAdapter {
         return new Label(text, skin);
     }
 
-    // ==================== 事件处理方法 ====================
-
+    // 事件处理方法（与之前相同）
     private void onCreateRoom() {
         String url = serverUrlField.getText().trim();
         if (url.isEmpty()) {
@@ -199,21 +189,11 @@ public class MenuScreen extends ScreenAdapter {
                 setStatus("房间创建成功！", Color.GREEN);
                 game.setScreen(new LobbyScreen(game, roomCode, playerId, map, true));
             }
-
-            @Override
-            public void onRoomJoined(String roomCode, JSONObject data, String playerId) {}
-
-            @Override
-            public void onPlayerJoined(int playerCount) {}
-
-            @Override
-            public void onPlayerLeft(String playerId) {}
-
-            @Override
-            public void onGameStart(JSONObject data) {}
-
-            @Override
-            public void onError(String error) {
+            @Override public void onRoomJoined(String roomCode, JSONObject data, String playerId) {}
+            @Override public void onPlayerJoined(int playerCount) {}
+            @Override public void onPlayerLeft(String playerId) {}
+            @Override public void onGameStart(JSONObject data) {}
+            @Override public void onError(String error) {
                 setStatus("错误: " + error, Color.RED);
             }
         });
@@ -235,33 +215,22 @@ public class MenuScreen extends ScreenAdapter {
         setStatus("正在加入房间 " + code + " ...", Color.YELLOW);
 
         game.socketManager.connectAndJoin(url, code, new SocketManager.RoomListener() {
-            @Override
-            public void onRoomCreated(String roomCode, JSONObject data, String playerId) {}
-
+            @Override public void onRoomCreated(String roomCode, JSONObject data, String playerId) {}
             @Override
             public void onRoomJoined(String roomCode, JSONObject data, String playerId) {
                 int[][] map = parseMap(data);
                 setStatus("加入成功！", Color.GREEN);
                 game.setScreen(new LobbyScreen(game, roomCode, playerId, map, false));
             }
-
-            @Override
-            public void onPlayerJoined(int playerCount) {}
-
-            @Override
-            public void onPlayerLeft(String playerId) {}
-
-            @Override
-            public void onGameStart(JSONObject data) {}
-
-            @Override
-            public void onError(String error) {
+            @Override public void onPlayerJoined(int playerCount) {}
+            @Override public void onPlayerLeft(String playerId) {}
+            @Override public void onGameStart(JSONObject data) {}
+            @Override public void onError(String error) {
                 setStatus("错误: " + error, Color.RED);
             }
         });
     }
 
-    /** 解析服务器返回的地图数据 */
     public static int[][] parseMap(JSONObject data) {
         try {
             JSONArray mapArray = data.getJSONArray("map");
@@ -285,8 +254,6 @@ public class MenuScreen extends ScreenAdapter {
         statusLabel.setText(msg);
         statusLabel.setColor(color);
     }
-
-    // ==================== 生命周期 ====================
 
     @Override
     public void render(float delta) {
