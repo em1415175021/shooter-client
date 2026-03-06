@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -24,110 +25,121 @@ import com.game.shooter.network.SocketManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+/**
+ * 主菜单界面 - 高清中文版（使用 FreeType 字体）
+ */
 public class MenuScreen extends ScreenAdapter {
 
     private final ShooterGame game;
     private Stage stage;
     private Skin skin;
-
     private TextField serverUrlField;
     private TextField roomCodeField;
     private Label statusLabel;
-    private BitmapFont titleFont;
 
     public MenuScreen(ShooterGame game) {
         this.game = game;
         stage = new Stage(new ScreenViewport());
-        titleFont = new BitmapFont();
-        titleFont.getData().setScale(2.5f);
-
-        skin = buildSkin();
+        skin = buildSkin(); // 在 buildSkin 中生成所有资源
         buildUI();
-
         Gdx.input.setInputProcessor(stage);
     }
 
+    /** 构建皮肤（包含高清字体生成） */
     private Skin buildSkin() {
-        Skin s = new Skin();
+        Skin skin = new Skin();
 
-        // 创建白色像素纹理
+        // 1. 使用 FreeType 生成高清中文字体
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/simhei.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter param = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        param.size = 48; // 基础像素大小
+        // 包含所有可能用到的字符（中文、英文、数字、符号）
+        param.characters = "你我他的一是了在人有来创建房间加入房间服务器地址0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz——➕🚪错误成功连接等待：";
+        BitmapFont baseFont = generator.generateFont(param);
+        generator.dispose();
+
+        // 创建两种字体变体（通过缩放）
+        BitmapFont uiFont = new BitmapFont(baseFont.getData());
+        uiFont.getData().setScale(1.2f); // UI字体大小
+        BitmapFont titleFont = new BitmapFont(baseFont.getData());
+        titleFont.getData().setScale(1.8f); // 标题字体大小
+
+        // 将字体添加到皮肤
+        skin.add("default-font", uiFont);
+        skin.add("title-font", titleFont);
+
+        // 2. 白色像素纹理（用于按钮背景）
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
-        s.add("white", new Texture(pm));
+        skin.add("white", new Texture(pm));
         pm.dispose();
 
-        // 增大默认字体大小（从1.6f改为2.2f）
-        BitmapFont font = new BitmapFont();
-        font.getData().setScale(2.2f);  // 字体更大更清晰
-        s.add("default-font", font);
+        // 3. Label 样式
+        Label.LabelStyle labelStyle = new Label.LabelStyle();
+        labelStyle.font = skin.getFont("default-font");
+        labelStyle.fontColor = Color.WHITE;
+        skin.add("default", labelStyle);
 
-        // Label样式
-        Label.LabelStyle lblStyle = new Label.LabelStyle();
-        lblStyle.font = font;
-        lblStyle.fontColor = Color.WHITE;
-        s.add("default", lblStyle);
-
-        // TextField样式
+        // 4. TextField 样式
         TextField.TextFieldStyle tfStyle = new TextField.TextFieldStyle();
-        tfStyle.font = font;
+        tfStyle.font = skin.getFont("default-font");
         tfStyle.fontColor = Color.WHITE;
         tfStyle.messageFontColor = new Color(0.6f, 0.6f, 0.6f, 1f);
-        tfStyle.background = tintDrawable(s, new Color(0.08f, 0.08f, 0.2f, 0.95f));
-        tfStyle.focusedBackground = tintDrawable(s, new Color(0.1f, 0.1f, 0.35f, 1f));
-        tfStyle.cursor = tintDrawable(s, Color.WHITE);
-        s.add("default", tfStyle);
+        tfStyle.background = tintDrawable(skin, new Color(0.08f, 0.08f, 0.2f, 0.95f));
+        tfStyle.focusedBackground = tintDrawable(skin, new Color(0.1f, 0.1f, 0.35f, 1f));
+        tfStyle.cursor = tintDrawable(skin, Color.WHITE);
+        skin.add("default", tfStyle);
 
-        // 蓝色按钮样式（颜色调亮）
+        // 5. 蓝色按钮样式（创建房间）
         TextButton.TextButtonStyle btnBlue = new TextButton.TextButtonStyle();
-        btnBlue.font = font;
+        btnBlue.font = skin.getFont("default-font");
         btnBlue.fontColor = Color.WHITE;
-        btnBlue.up = tintDrawable(s, new Color(0.2f, 0.5f, 0.9f, 1f));   // 更亮蓝色
-        btnBlue.down = tintDrawable(s, new Color(0.15f, 0.4f, 0.7f, 1f));
-        btnBlue.over = tintDrawable(s, new Color(0.25f, 0.6f, 1.0f, 1f));
-        s.add("default", btnBlue);
+        btnBlue.up = tintDrawable(skin, new Color(0.2f, 0.5f, 0.9f, 1f));
+        btnBlue.down = tintDrawable(skin, new Color(0.15f, 0.4f, 0.7f, 1f));
+        btnBlue.over = tintDrawable(skin, new Color(0.25f, 0.6f, 1.0f, 1f));
+        skin.add("default", btnBlue);
 
-        // 绿色按钮样式（加入房间用）
+        // 6. 绿色按钮样式（加入房间）
         TextButton.TextButtonStyle btnGreen = new TextButton.TextButtonStyle();
-        btnGreen.font = font;
+        btnGreen.font = skin.getFont("default-font");
         btnGreen.fontColor = Color.WHITE;
-        btnGreen.up = tintDrawable(s, new Color(0.15f, 0.6f, 0.2f, 1f));
-        btnGreen.down = tintDrawable(s, new Color(0.1f, 0.45f, 0.15f, 1f));
-        btnGreen.over = tintDrawable(s, new Color(0.2f, 0.7f, 0.3f, 1f));
-        s.add("green", btnGreen);
+        btnGreen.up = tintDrawable(skin, new Color(0.15f, 0.6f, 0.2f, 1f));
+        btnGreen.down = tintDrawable(skin, new Color(0.1f, 0.45f, 0.15f, 1f));
+        btnGreen.over = tintDrawable(skin, new Color(0.2f, 0.7f, 0.3f, 1f));
+        skin.add("green", btnGreen);
 
-        return s;
+        return skin;
     }
 
-    private Drawable tintDrawable(Skin s, Color color) {
-        return new TextureRegionDrawable(s.getRegion("white")).tint(color);
+    /** 生成带颜色的 Drawable */
+    private Drawable tintDrawable(Skin skin, Color color) {
+        return new TextureRegionDrawable(skin.getRegion("white")).tint(color);
     }
 
+    /** 构建界面布局 */
     private void buildUI() {
         Table root = new Table();
         root.setFillParent(true);
         root.pad(30);
         stage.addActor(root);
 
-        // 标题
-        Label title = new Label("  3人射击对战  ", skin);
-        title.setFontScale(1.8f);
-        title.setColor(new Color(0.4f, 0.9f, 1f, 1f));
+        // 标题（使用标题字体）
+        Label title = new Label("  3人射击对战  ", new Label.LabelStyle(skin.getFont("title-font"), new Color(0.4f, 0.9f, 1f, 1f)));
         root.add(title).colspan(2).padBottom(10).row();
 
         // 副标题
         Label subtitle = new Label("非局域网实时联机 · 3人吃鸡", skin);
-        subtitle.setFontScale(0.9f);
         subtitle.setColor(new Color(0.7f, 0.7f, 0.7f, 1f));
         root.add(subtitle).colspan(2).padBottom(40).row();
 
-        // 服务器地址输入
+        // 服务器地址
         root.add(makeLabel("服务器地址:")).right().padRight(12);
         serverUrlField = new TextField(Config.DEFAULT_SERVER_URL, skin);
         serverUrlField.setMessageText("https://your-app.up.railway.app");
-        root.add(serverUrlField).width(480).height(65).padBottom(20).row(); // 增高输入框
+        root.add(serverUrlField).width(480).height(65).padBottom(20).row();
 
-        // 创建房间按钮（加大尺寸）
+        // 创建房间按钮
         TextButton createBtn = new TextButton("  ➕  创建房间  ", skin);
         createBtn.addListener(new ClickListener() {
             @Override
@@ -135,7 +147,7 @@ public class MenuScreen extends ScreenAdapter {
                 onCreateRoom();
             }
         });
-        root.add(createBtn).colspan(2).width(450).height(80).padBottom(30).row(); // 加大按钮
+        root.add(createBtn).colspan(2).width(450).height(80).padBottom(30).row();
 
         // 分隔线
         Label orLabel = makeLabel("—— 或者加入朋友的房间 ——");
@@ -147,9 +159,9 @@ public class MenuScreen extends ScreenAdapter {
         roomCodeField = new TextField("", skin);
         roomCodeField.setMessageText("输入6位房间码 (如: AB12CD)");
         roomCodeField.setMaxLength(6);
-        root.add(roomCodeField).width(480).height(65).padBottom(20).row(); // 增高输入框
+        root.add(roomCodeField).width(480).height(65).padBottom(20).row();
 
-        // 加入房间按钮（加大尺寸）
+        // 加入房间按钮
         TextButton joinBtn = new TextButton("  🚪  加入房间  ", skin, "green");
         joinBtn.addListener(new ClickListener() {
             @Override
@@ -157,7 +169,7 @@ public class MenuScreen extends ScreenAdapter {
                 onJoinRoom();
             }
         });
-        root.add(joinBtn).colspan(2).width(450).height(80).padBottom(30).row(); // 加大按钮
+        root.add(joinBtn).colspan(2).width(450).height(80).padBottom(30).row();
 
         // 状态标签
         statusLabel = new Label("", skin);
@@ -168,6 +180,8 @@ public class MenuScreen extends ScreenAdapter {
     private Label makeLabel(String text) {
         return new Label(text, skin);
     }
+
+    // ==================== 事件处理方法 ====================
 
     private void onCreateRoom() {
         String url = serverUrlField.getText().trim();
@@ -247,6 +261,7 @@ public class MenuScreen extends ScreenAdapter {
         });
     }
 
+    /** 解析服务器返回的地图数据 */
     public static int[][] parseMap(JSONObject data) {
         try {
             JSONArray mapArray = data.getJSONArray("map");
@@ -271,6 +286,8 @@ public class MenuScreen extends ScreenAdapter {
         statusLabel.setColor(color);
     }
 
+    // ==================== 生命周期 ====================
+
     @Override
     public void render(float delta) {
         Gdx.gl.glClearColor(0.04f, 0.04f, 0.14f, 1f);
@@ -288,6 +305,5 @@ public class MenuScreen extends ScreenAdapter {
     public void dispose() {
         stage.dispose();
         skin.dispose();
-        titleFont.dispose();
     }
 }

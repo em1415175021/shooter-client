@@ -37,7 +37,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    // 使用标准原生库目录（无需额外配置）
+    // 使用标准原生库目录（手动放置的 .so 文件放在 src/main/jniLibs/ABI/ 下）
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/jniLibs']
@@ -56,7 +56,7 @@ android {
             ]
         }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = true   // 解决 16KB 页面大小兼容性问题
         }
     }
 }
@@ -66,13 +66,20 @@ dependencies {
     implementation "com.badlogicgames.gdx:gdx-backend-android:1.12.0"
     implementation 'androidx.multidex:multidex:2.0.1'
 
+    // LibGDX 原生平台库（用于基础功能）
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
+
+    // FreeType 原生平台库（用于高清字体）
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:1.12.0:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:1.12.0:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:1.12.0:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:1.12.0:natives-x86_64"
 }
 
-// 注意：已移除所有自动复制/清理任务，因为它们会干扰手动添加的 .so 文件。
-// 请确保将 libgdx.so 手动放置在正确的位置：
+// 注意：原生库已手动放置，无需自动复制任务。
+// 请确保 libgdx.so 和 freetype 相关 .so 文件已正确放入：
 //   android/src/main/jniLibs/arm64-v8a/libgdx.so
-// 其他 ABI 如果需要，也请手动放置。
+//   android/src/main/jniLibs/arm64-v8a/libgdx-freetype.so (如果需要)
