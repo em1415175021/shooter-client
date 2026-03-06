@@ -16,11 +16,10 @@ android {
         applicationId "com.game.shooter"
         minSdk 21
         targetSdk 34
-        versionCode 2                 // 已递增
+        versionCode 2
         versionName "1.1"
         multiDexEnabled true
 
-        // 明确指定支持的 ABI 架构
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
         }
@@ -38,7 +37,6 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    // 告知 Android 打包时从 libs 目录获取原生库
     sourceSets {
         main {
             jniLibs.srcDirs = ['libs']
@@ -56,14 +54,12 @@ android {
                 'META-INF/*.kotlin_module'
             ]
         }
-        jniLibs {
-            useLegacyPackaging = true    // 兼容 Android 16KB 页面大小
-        }
     }
 }
 
 dependencies {
     implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx:1.12.0"
     implementation "com.badlogicgames.gdx:gdx-backend-android:1.12.0"
     implementation 'androidx.multidex:multidex:2.0.1'
 
@@ -73,49 +69,33 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
 }
 
-// ===== 原生库复制任务（增强版）=====
 tasks.register('cleanLibs') {
-    doFirst {
-        delete fileTree('libs') {
-            include '**/*.so'
-        }
-        println "🧹 Cleaned old .so files from libs/"
+    doLast {
+        delete fileTree('libs') { include '**/*.so' }
+        println "🧹 Cleaned old .so files"
     }
 }
 
 tasks.register('copyAndroidNatives') {
-    dependsOn cleanLibs   // 先清理旧文件
-    doFirst {
-        // 确保各 ABI 目录存在
-        ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'].each { abi ->
-            file("libs/${abi}").mkdirs()
-        }
-    }
+    dependsOn(cleanLibs)
     doLast {
-        // 遍历 natives 配置中的所有 artifact
-        configurations.natives.resolvedConfiguration.resolvedArtifacts.each { artifact ->
-            def name = artifact.name
-            def outputDir = null
-            if      (name.contains('natives-arm64-v8a'))    outputDir = file('libs/arm64-v8a')
-            else if (name.contains('natives-armeabi-v7a'))  outputDir = file('libs/armeabi-v7a')
-            else if (name.contains('natives-x86_64'))       outputDir = file('libs/x86_64')
-            else if (name.contains('natives-x86'))          outputDir = file('libs/x86')
+        ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"].each { abi ->
+            file("libs/$abi").mkdirs()
+        }
 
-            if (outputDir != null) {
-                copy {
-                    from zipTree(artifact.file)
-                    into outputDir
-                    include '*.so'
+        configurations.natives.each { jar ->
+            zipTree(jar).each { file ->
+                if (file.name.endsWith(".so")) {
+                    def abi = file.parentFile.name
+                    copy {
+                        from file
+                        into "libs/$abi"
+                    }
                 }
-                println "✅ Copied ${artifact.file.name} -> ${outputDir}"
             }
         }
+        println "✅ Copied all libgdx.so successfully!"
     }
 }
 
-// 确保 preBuild 依赖 copyAndroidNatives
-afterEvaluate {
-    tasks.matching { it.name == 'preBuild' }.configureEach {
-        it.dependsOn('copyAndroidNatives')
-    }
-}
+preBuild.dependsOn copyAndroidNatives
