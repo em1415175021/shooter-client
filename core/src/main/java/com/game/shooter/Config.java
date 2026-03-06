@@ -8,7 +8,7 @@ public class Config {
 
     // ========== 服务器配置 ==========
     /** Railway 服务器地址，部署后替换为真实地址，例如: https://shooter-game.up.railway.app */
-    public static final String DEFAULT_SERVER_URL = "https://your-app.up.railway.app";
+    public static final String DEFAULT_SERVER_URL = "https://web-production-4195c.up.railway.app/";
 
     // ========== 地图常量 ==========
     public static final int TILE_SIZE   = 32;   // 每格像素大小（与服务器一致）
