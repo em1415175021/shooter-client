@@ -54,12 +54,14 @@ android {
                 'META-INF/*.kotlin_module'
             ]
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
 dependencies {
     implementation project(':core')
-    implementation "com.badlogicgames.gdx:gdx:1.12.0"
     implementation "com.badlogicgames.gdx:gdx-backend-android:1.12.0"
     implementation 'androidx.multidex:multidex:2.0.1'
 
@@ -69,33 +71,58 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
 }
 
+// ===== 修复后的原生库复制任务 =====
 tasks.register('cleanLibs') {
-    doLast {
-        delete fileTree('libs') { include '**/*.so' }
-        println "🧹 Cleaned old .so files"
+    doFirst {
+        delete fileTree('libs') {
+            include '**/*.so'
+        }
+        // 同时删除可能遗留的 zip_xxx 临时目录
+        file('libs').eachDir { dir ->
+            if (dir.name.startsWith('zip_')) {
+                delete dir
+            }
+        }
+        println "🧹 Cleaned old .so files and zip_* directories"
     }
 }
 
 tasks.register('copyAndroidNatives') {
-    dependsOn(cleanLibs)
-    doLast {
-        ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"].each { abi ->
-            file("libs/$abi").mkdirs()
+    dependsOn cleanLibs
+    doFirst {
+        ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'].each { abi ->
+            file("libs/${abi}").mkdirs()
         }
+    }
+    doLast {
+        configurations.natives.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            def name = artifact.name
+            def targetAbi = null
+            if (name.contains('natives-arm64-v8a')) targetAbi = 'arm64-v8a'
+            else if (name.contains('natives-armeabi-v7a')) targetAbi = 'armeabi-v7a'
+            else if (name.contains('natives-x86_64')) targetAbi = 'x86_64'
+            else if (name.contains('natives-x86')) targetAbi = 'x86'
 
-        configurations.natives.each { jar ->
-            zipTree(jar).each { file ->
-                if (file.name.endsWith(".so")) {
-                    def abi = file.parentFile.name
-                    copy {
-                        from file
-                        into "libs/$abi"
+            if (targetAbi != null) {
+                def outputDir = file("libs/${targetAbi}")
+                copy {
+                    from zipTree(artifact.file)
+                    into outputDir
+                    include '**/*.so'
+                    // 将所有 .so 文件直接放到输出目录，忽略中间文件夹
+                    eachFile { fcd ->
+                        fcd.relativePath = new RelativePath(true, fcd.name)
                     }
+                    includeEmptyDirs(false)
                 }
+                println "✅ Copied libgdx.so to ${outputDir}"
             }
         }
-        println "✅ Copied all libgdx.so successfully!"
     }
 }
 
-preBuild.dependsOn copyAndroidNatives
+afterEvaluate {
+    tasks.matching { it.name == 'preBuild' }.configureEach {
+        it.dependsOn('copyAndroidNatives')
+    }
+}
