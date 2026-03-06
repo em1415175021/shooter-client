@@ -32,3 +32,14 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :android:assembleDebug --stacktrace
+
+      # 👇 新增：上传 APK 文件
+      - name: 📤 Upload APK
+        if: success()  # 仅在构建成功时上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: shooter-game-apk-${{ github.run_number }}
+          path: |
+            **/*.apk
+          if-no-files-found: warn
+          retention-days: 30
