@@ -40,6 +40,7 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/jniLibs']
+            assets.srcDirs = ['assets']   // 指定 assets 目录为 android/assets
         }
     }
 
