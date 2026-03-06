@@ -25,17 +25,23 @@ jobs:
       - name: 🔧 Generate wrapper
         run: gradle wrapper --gradle-version=8.4
       
+      - name: 🔑 Grant execute permission
+        run: chmod +x gradlew
+      
       - name: 📝 Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
       
+      # 显式复制原生库（确保 libgdx.so 被放入 libs 目录）
+      - name: 📦 Copy native libraries
+        run: ./gradlew :android:copyAndroidNatives
+
       - name: 🔨 Build
         run: |
-          chmod +x gradlew
           ./gradlew :android:assembleDebug --stacktrace
 
-      # 👇 新增：上传 APK 文件
+      # 上传生成的 APK 文件
       - name: 📤 Upload APK
-        if: success()  # 仅在构建成功时上传
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: shooter-game-apk-${{ github.run_number }}
