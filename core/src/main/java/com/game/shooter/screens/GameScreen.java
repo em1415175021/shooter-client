@@ -703,6 +703,12 @@ public class GameScreen extends ScreenAdapter implements InputProcessor {
     @Override public boolean mouseMoved(int x, int y) { return false; }
     @Override public boolean scrolled(float ax, float ay){ return false; }
 
+    // 新增 touchCancelled 方法（libGDX 1.12.0+ 需要）
+    @Override
+    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
     // ──────────────────────────────────────────
     //  生命周期
     // ──────────────────────────────────────────
