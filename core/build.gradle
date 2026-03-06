@@ -8,6 +8,8 @@ dependencies {
     api('io.socket:socket.io-client:2.1.0') {
         exclude group: 'org.json', module: 'json'
     }
-    // 必须添加 FreeType API 依赖，否则 MenuScreen 编译失败
+    // 添加 JSON 库（必须！否则所有 JSONObject 都找不到）
+    api "org.json:json:20230227"
+    // 添加 FreeType 支持（用于高清字体）
     api "com.badlogicgames.gdx:gdx-freetype:1.12.0"
 }
