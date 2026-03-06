@@ -113,8 +113,9 @@ public class MenuScreen extends ScreenAdapter {
         return s;
     }
 
+    /** 修改点：将 tint 结果强制转换为 TextureRegionDrawable */
     private TextureRegionDrawable tintDrawable(Skin s, Color color) {
-        return new TextureRegionDrawable(s.getRegion("white")).tint(color);
+        return (TextureRegionDrawable) new TextureRegionDrawable(s.getRegion("white")).tint(color);
     }
 
     private void buildUI() {
