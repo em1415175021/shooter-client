@@ -1,10 +1,8 @@
 apply plugin: 'com.android.application'
 
-// ⚠️ 必须在 dependencies 块之前声明 natives 配置
 configurations {
     natives
     all {
-        // 排除旧版 org.json，使用 Android 内置版本
         exclude group: 'org.json', module: 'json'
     }
 }
@@ -21,6 +19,11 @@ android {
         versionCode 1
         versionName "1.1"
         multiDexEnabled true
+
+        // 明确指定支持的 ABI 架构，确保只打包需要的 .so 文件
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
     }
 
     buildTypes {
@@ -35,14 +38,13 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    // 告诉 Android 去 libs/ 目录找原生 .so 库
     sourceSets {
         main {
             jniLibs.srcDirs = ['libs']
         }
     }
 
-    packaging {
+    packagingOptions {
         resources {
             excludes += [
                 'META-INF/DEPENDENCIES',
@@ -53,27 +55,24 @@ android {
                 'META-INF/*.kotlin_module'
             ]
         }
+        // 尝试解决16KB页面大小问题：使用传统打包方式
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
 dependencies {
     implementation project(':core')
-
-    // LibGDX Android 后端
     implementation "com.badlogicgames.gdx:gdx-backend-android:1.12.0"
-
-    // MultiDex 支持
     implementation 'androidx.multidex:multidex:2.0.1'
 
-    // LibGDX 各平台原生库（.so 文件）
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86"
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
 }
 
-// ── 拷贝 LibGDX 原生 .so 库到 libs 目录 ──
-// Gradle 8.x 语法：tasks.register
 tasks.register('copyAndroidNatives') {
     doFirst {
         ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'].each { abi ->
@@ -101,7 +100,6 @@ tasks.register('copyAndroidNatives') {
     }
 }
 
-// assembleDebug/assembleRelease 之前自动运行 copyAndroidNatives
 afterEvaluate {
     tasks.matching { it.name == 'preBuild' }.configureEach {
         it.dependsOn('copyAndroidNatives')
