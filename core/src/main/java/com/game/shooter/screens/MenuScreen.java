@@ -50,21 +50,25 @@ public class MenuScreen extends ScreenAdapter {
     private Skin buildSkin() {
         Skin s = new Skin();
 
+        // 创建白色像素纹理
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
         s.add("white", new Texture(pm));
         pm.dispose();
 
+        // 增大默认字体大小（从1.6f改为2.2f）
         BitmapFont font = new BitmapFont();
-        font.getData().setScale(1.6f);
+        font.getData().setScale(2.2f);  // 字体更大更清晰
         s.add("default-font", font);
 
+        // Label样式
         Label.LabelStyle lblStyle = new Label.LabelStyle();
         lblStyle.font = font;
         lblStyle.fontColor = Color.WHITE;
         s.add("default", lblStyle);
 
+        // TextField样式
         TextField.TextFieldStyle tfStyle = new TextField.TextFieldStyle();
         tfStyle.font = font;
         tfStyle.fontColor = Color.WHITE;
@@ -74,26 +78,27 @@ public class MenuScreen extends ScreenAdapter {
         tfStyle.cursor = tintDrawable(s, Color.WHITE);
         s.add("default", tfStyle);
 
+        // 蓝色按钮样式（颜色调亮）
         TextButton.TextButtonStyle btnBlue = new TextButton.TextButtonStyle();
         btnBlue.font = font;
         btnBlue.fontColor = Color.WHITE;
-        btnBlue.up = tintDrawable(s, new Color(0.15f, 0.45f, 0.85f, 1f));
-        btnBlue.down = tintDrawable(s, new Color(0.1f, 0.3f, 0.6f, 1f));
-        btnBlue.over = tintDrawable(s, new Color(0.25f, 0.55f, 0.95f, 1f));
+        btnBlue.up = tintDrawable(s, new Color(0.2f, 0.5f, 0.9f, 1f));   // 更亮蓝色
+        btnBlue.down = tintDrawable(s, new Color(0.15f, 0.4f, 0.7f, 1f));
+        btnBlue.over = tintDrawable(s, new Color(0.25f, 0.6f, 1.0f, 1f));
         s.add("default", btnBlue);
 
+        // 绿色按钮样式（加入房间用）
         TextButton.TextButtonStyle btnGreen = new TextButton.TextButtonStyle();
         btnGreen.font = font;
         btnGreen.fontColor = Color.WHITE;
-        btnGreen.up = tintDrawable(s, new Color(0.1f, 0.55f, 0.15f, 1f));
-        btnGreen.down = tintDrawable(s, new Color(0.05f, 0.35f, 0.1f, 1f));
-        btnGreen.over = tintDrawable(s, new Color(0.15f, 0.65f, 0.2f, 1f));
+        btnGreen.up = tintDrawable(s, new Color(0.15f, 0.6f, 0.2f, 1f));
+        btnGreen.down = tintDrawable(s, new Color(0.1f, 0.45f, 0.15f, 1f));
+        btnGreen.over = tintDrawable(s, new Color(0.2f, 0.7f, 0.3f, 1f));
         s.add("green", btnGreen);
 
         return s;
     }
 
-    // 修复点：返回类型改为 Drawable，移除强制转换
     private Drawable tintDrawable(Skin s, Color color) {
         return new TextureRegionDrawable(s.getRegion("white")).tint(color);
     }
@@ -104,21 +109,25 @@ public class MenuScreen extends ScreenAdapter {
         root.pad(30);
         stage.addActor(root);
 
+        // 标题
         Label title = new Label("  3人射击对战  ", skin);
         title.setFontScale(1.8f);
         title.setColor(new Color(0.4f, 0.9f, 1f, 1f));
         root.add(title).colspan(2).padBottom(10).row();
 
+        // 副标题
         Label subtitle = new Label("非局域网实时联机 · 3人吃鸡", skin);
         subtitle.setFontScale(0.9f);
         subtitle.setColor(new Color(0.7f, 0.7f, 0.7f, 1f));
         root.add(subtitle).colspan(2).padBottom(40).row();
 
+        // 服务器地址输入
         root.add(makeLabel("服务器地址:")).right().padRight(12);
         serverUrlField = new TextField(Config.DEFAULT_SERVER_URL, skin);
         serverUrlField.setMessageText("https://your-app.up.railway.app");
-        root.add(serverUrlField).width(480).height(55).padBottom(20).row();
+        root.add(serverUrlField).width(480).height(65).padBottom(20).row(); // 增高输入框
 
+        // 创建房间按钮（加大尺寸）
         TextButton createBtn = new TextButton("  ➕  创建房间  ", skin);
         createBtn.addListener(new ClickListener() {
             @Override
@@ -126,18 +135,21 @@ public class MenuScreen extends ScreenAdapter {
                 onCreateRoom();
             }
         });
-        root.add(createBtn).colspan(2).width(380).height(65).padBottom(30).row();
+        root.add(createBtn).colspan(2).width(450).height(80).padBottom(30).row(); // 加大按钮
 
+        // 分隔线
         Label orLabel = makeLabel("—— 或者加入朋友的房间 ——");
         orLabel.setColor(new Color(0.6f, 0.6f, 0.6f, 1f));
         root.add(orLabel).colspan(2).padBottom(20).row();
 
+        // 房间码输入
         root.add(makeLabel("房 间 码:")).right().padRight(12);
         roomCodeField = new TextField("", skin);
         roomCodeField.setMessageText("输入6位房间码 (如: AB12CD)");
         roomCodeField.setMaxLength(6);
-        root.add(roomCodeField).width(480).height(55).padBottom(20).row();
+        root.add(roomCodeField).width(480).height(65).padBottom(20).row(); // 增高输入框
 
+        // 加入房间按钮（加大尺寸）
         TextButton joinBtn = new TextButton("  🚪  加入房间  ", skin, "green");
         joinBtn.addListener(new ClickListener() {
             @Override
@@ -145,8 +157,9 @@ public class MenuScreen extends ScreenAdapter {
                 onJoinRoom();
             }
         });
-        root.add(joinBtn).colspan(2).width(380).height(65).padBottom(30).row();
+        root.add(joinBtn).colspan(2).width(450).height(80).padBottom(30).row(); // 加大按钮
 
+        // 状态标签
         statusLabel = new Label("", skin);
         statusLabel.setColor(Color.YELLOW);
         root.add(statusLabel).colspan(2).row();
@@ -174,20 +187,16 @@ public class MenuScreen extends ScreenAdapter {
             }
 
             @Override
-            public void onRoomJoined(String roomCode, JSONObject data, String playerId) {
-            }
+            public void onRoomJoined(String roomCode, JSONObject data, String playerId) {}
 
             @Override
-            public void onPlayerJoined(int playerCount) {
-            }
+            public void onPlayerJoined(int playerCount) {}
 
             @Override
-            public void onPlayerLeft(String playerId) {
-            }
+            public void onPlayerLeft(String playerId) {}
 
             @Override
-            public void onGameStart(JSONObject data) {
-            }
+            public void onGameStart(JSONObject data) {}
 
             @Override
             public void onError(String error) {
@@ -213,8 +222,7 @@ public class MenuScreen extends ScreenAdapter {
 
         game.socketManager.connectAndJoin(url, code, new SocketManager.RoomListener() {
             @Override
-            public void onRoomCreated(String roomCode, JSONObject data, String playerId) {
-            }
+            public void onRoomCreated(String roomCode, JSONObject data, String playerId) {}
 
             @Override
             public void onRoomJoined(String roomCode, JSONObject data, String playerId) {
@@ -224,16 +232,13 @@ public class MenuScreen extends ScreenAdapter {
             }
 
             @Override
-            public void onPlayerJoined(int playerCount) {
-            }
+            public void onPlayerJoined(int playerCount) {}
 
             @Override
-            public void onPlayerLeft(String playerId) {
-            }
+            public void onPlayerLeft(String playerId) {}
 
             @Override
-            public void onGameStart(JSONObject data) {
-            }
+            public void onGameStart(JSONObject data) {}
 
             @Override
             public void onError(String error) {
