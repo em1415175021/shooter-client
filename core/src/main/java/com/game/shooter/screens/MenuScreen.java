@@ -43,7 +43,7 @@ public class MenuScreen extends ScreenAdapter {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // 创建渐变背景（如果没有图片）
+        // 创建渐变背景（1x256 纹理，拉伸后平滑过渡）
         Pixmap bgPix = new Pixmap(1, 256, Pixmap.Format.RGBA8888);
         for (int y = 0; y < 256; y++) {
             float t = y / 255f;
@@ -73,45 +73,29 @@ public class MenuScreen extends ScreenAdapter {
         titleFont.getData().setScale(2.2f);
     }
 
-    private Drawable createRoundedRectDrawable(int width, int height, Color bgColor, Color borderColor, int borderRadius) {
-        Pixmap pix = new Pixmap(width, height, Pixmap.Format.RGBA8888);
-        pix.setColor(bgColor);
-        pix.fillRectangle(0, 0, width, height);
-        // 简单圆角效果：可以画四个角，但这里简化，直接填充矩形后画边框
-        pix.setColor(borderColor);
-        for (int i = 0; i < 2; i++) {
-            pix.drawRectangle(i, i, width - i * 2, height - i * 2);
-        }
-        // 注：真正的圆角需要更复杂的处理，但这里作为示例，边框矩形已足够
+    /** 创建纯色 Drawable */
+    private Drawable solidDrawable(Color color, float minWidth, float minHeight) {
+        Pixmap pix = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pix.setColor(color);
+        pix.fill();
         Texture tex = new Texture(pix);
         pix.dispose();
-        return new TextureRegionDrawable(new TextureRegion(tex));
+        TextureRegionDrawable drawable = new TextureRegionDrawable(new TextureRegion(tex));
+        drawable.setMinWidth(minWidth);
+        drawable.setMinHeight(minHeight);
+        return drawable;
     }
 
     private Skin createSkin() {
         Skin skin = new Skin();
 
-        // 字体
+        // 添加字体
         skin.add("default-font", uiFont);
         skin.add("title-font", titleFont);
 
-        // 基础白色纹理（用于纯色背景）
-        Pixmap white = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        white.setColor(Color.WHITE);
-        white.fill();
-        skin.add("white", new TextureRegionDrawable(new Texture(white)));
-        white.dispose();
-
-        // ===== 输入框背景 =====
-        Drawable inputBg = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.2f, 0.35f, 0.9f), new Color(0.4f, 0.7f, 1f, 0.8f), 2);
-        ((TextureRegionDrawable)inputBg).setMinWidth(200);
-        ((TextureRegionDrawable)inputBg).setMinHeight(60);
-        skin.add("input-bg", inputBg);
-
-        Drawable inputBgFocused = createRoundedRectDrawable(10, 10, new Color(0.2f, 0.25f, 0.45f, 1f), Color.WHITE, 2);
-        ((TextureRegionDrawable)inputBgFocused).setMinWidth(200);
-        ((TextureRegionDrawable)inputBgFocused).setMinHeight(60);
-        skin.add("input-bg-focused", inputBgFocused);
+        // 添加各种背景 Drawable
+        skin.add("input-bg", solidDrawable(new Color(0.15f, 0.2f, 0.35f, 0.9f), 200, 60));
+        skin.add("input-bg-focused", solidDrawable(new Color(0.2f, 0.25f, 0.45f, 1f), 200, 60));
 
         // 光标
         Pixmap cursorPix = new Pixmap(3, 20, Pixmap.Format.RGBA8888);
@@ -129,16 +113,9 @@ public class MenuScreen extends ScreenAdapter {
         tfStyle.cursor = skin.getDrawable("cursor");
         skin.add("default", tfStyle);
 
-        // ===== 蓝色按钮 =====
-        Drawable blueUp = createRoundedRectDrawable(10, 10, new Color(0.2f, 0.5f, 0.9f, 1f), Color.WHITE, 2);
-        ((TextureRegionDrawable)blueUp).setMinWidth(200);
-        ((TextureRegionDrawable)blueUp).setMinHeight(70);
-        skin.add("blue-up", blueUp);
-
-        Drawable blueDown = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.4f, 0.7f, 1f), Color.WHITE, 2);
-        ((TextureRegionDrawable)blueDown).setMinWidth(200);
-        ((TextureRegionDrawable)blueDown).setMinHeight(70);
-        skin.add("blue-down", blueDown);
+        // 蓝色按钮
+        skin.add("blue-up", solidDrawable(new Color(0.2f, 0.5f, 0.9f, 1f), 200, 70));
+        skin.add("blue-down", solidDrawable(new Color(0.15f, 0.4f, 0.7f, 1f), 200, 70));
 
         TextButton.TextButtonStyle blueStyle = new TextButton.TextButtonStyle();
         blueStyle.font = skin.getFont("default-font");
@@ -147,16 +124,9 @@ public class MenuScreen extends ScreenAdapter {
         blueStyle.down = skin.getDrawable("blue-down");
         skin.add("blue", blueStyle);
 
-        // ===== 绿色按钮 =====
-        Drawable greenUp = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.7f, 0.2f, 1f), Color.WHITE, 2);
-        ((TextureRegionDrawable)greenUp).setMinWidth(200);
-        ((TextureRegionDrawable)greenUp).setMinHeight(70);
-        skin.add("green-up", greenUp);
-
-        Drawable greenDown = createRoundedRectDrawable(10, 10, new Color(0.1f, 0.5f, 0.15f, 1f), Color.WHITE, 2);
-        ((TextureRegionDrawable)greenDown).setMinWidth(200);
-        ((TextureRegionDrawable)greenDown).setMinHeight(70);
-        skin.add("green-down", greenDown);
+        // 绿色按钮
+        skin.add("green-up", solidDrawable(new Color(0.15f, 0.7f, 0.2f, 1f), 200, 70));
+        skin.add("green-down", solidDrawable(new Color(0.1f, 0.5f, 0.15f, 1f), 200, 70));
 
         TextButton.TextButtonStyle greenStyle = new TextButton.TextButtonStyle();
         greenStyle.font = skin.getFont("default-font");
@@ -165,7 +135,7 @@ public class MenuScreen extends ScreenAdapter {
         greenStyle.down = skin.getDrawable("green-down");
         skin.add("green", greenStyle);
 
-        // Label 样式
+        // Label样式
         Label.LabelStyle labelStyle = new Label.LabelStyle();
         labelStyle.font = skin.getFont("default-font");
         labelStyle.fontColor = Color.WHITE;
@@ -181,22 +151,18 @@ public class MenuScreen extends ScreenAdapter {
         root.pad(50);
         stage.addActor(root);
 
-        // 标题
         Label title = new Label("3人射击对战", new Label.LabelStyle(skin.getFont("title-font"), new Color(0.4f, 0.9f, 1f, 1f)));
         root.add(title).colspan(2).padBottom(10).row();
 
-        // 副标题
         Label subtitle = new Label("非局域网实时联机 · 3人吃鸡", skin);
         subtitle.setColor(new Color(0.8f, 0.8f, 0.8f, 0.8f));
         root.add(subtitle).colspan(2).padBottom(50).row();
 
-        // 服务器地址
         root.add(new Label("服务器地址:", skin)).right().padRight(15);
         serverUrlField = new TextField(Config.DEFAULT_SERVER_URL, skin);
         serverUrlField.setMessageText("https://your-app.up.railway.app");
         root.add(serverUrlField).width(500).height(65).padBottom(25).row();
 
-        // 创建房间按钮
         TextButton createBtn = new TextButton("  ➕  创建房间  ", skin, "blue");
         createBtn.addListener(new ClickListener() {
             @Override
@@ -204,19 +170,16 @@ public class MenuScreen extends ScreenAdapter {
         });
         root.add(createBtn).colspan(2).width(400).height(80).padBottom(30).row();
 
-        // 分隔线
         Label orLabel = new Label("—— 或者加入朋友的房间 ——", skin);
         orLabel.setColor(new Color(0.7f, 0.7f, 0.7f, 0.8f));
         root.add(orLabel).colspan(2).padBottom(25).row();
 
-        // 房间码输入
         root.add(new Label("房 间 码:", skin)).right().padRight(15);
         roomCodeField = new TextField("", skin);
         roomCodeField.setMessageText("输入6位房间码 (如: AB12CD)");
         roomCodeField.setMaxLength(6);
         root.add(roomCodeField).width(500).height(65).padBottom(25).row();
 
-        // 加入房间按钮
         TextButton joinBtn = new TextButton("  🚪  加入房间  ", skin, "green");
         joinBtn.addListener(new ClickListener() {
             @Override
@@ -224,19 +187,16 @@ public class MenuScreen extends ScreenAdapter {
         });
         root.add(joinBtn).colspan(2).width(400).height(80).padBottom(30).row();
 
-        // 状态标签
         statusLabel = new Label("", skin);
         statusLabel.setColor(Color.YELLOW);
         root.add(statusLabel).colspan(2).row();
     }
 
-    // 以下事件处理方法保持不变
+    // 以下事件处理方法与之前完全相同，略...
+
     private void onCreateRoom() {
         String url = serverUrlField.getText().trim();
-        if (url.isEmpty()) {
-            setStatus("请先填写服务器地址！", Color.RED);
-            return;
-        }
+        if (url.isEmpty()) { setStatus("请先填写服务器地址！", Color.RED); return; }
         setStatus("正在连接服务器...", Color.YELLOW);
         game.socketManager.connectAndCreate(url, new SocketManager.RoomListener() {
             @Override public void onRoomCreated(String roomCode, JSONObject data, String playerId) {
@@ -298,7 +258,6 @@ public class MenuScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
-        // 绘制背景
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         stage.getBatch().begin();
