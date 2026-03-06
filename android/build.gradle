@@ -37,9 +37,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    // 使用标准原生库目录（无需额外配置）
     sourceSets {
         main {
-            jniLibs.srcDirs = ['libs']
+            jniLibs.srcDirs = ['src/main/jniLibs']
         }
     }
 
@@ -71,65 +72,7 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
 }
 
-// ===== 修复后的原生库复制任务（增强 cleanLibs 健壮性） =====
-tasks.register('cleanLibs') {
-    doFirst {
-        // 确保 libs 目录存在，避免 FileNotFoundException
-        def libsDir = file('libs')
-        if (!libsDir.exists()) {
-            libsDir.mkdirs()
-            println "📁 Created libs directory"
-        }
-        // 删除所有 .so 文件
-        delete fileTree('libs') {
-            include '**/*.so'
-        }
-        // 同时删除可能遗留的 zip_xxx 临时目录
-        file('libs').eachDir { dir ->
-            if (dir.name.startsWith('zip_')) {
-                delete dir
-            }
-        }
-        println "🧹 Cleaned old .so files and zip_* directories"
-    }
-}
-
-tasks.register('copyAndroidNatives') {
-    dependsOn cleanLibs
-    doFirst {
-        ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'].each { abi ->
-            file("libs/${abi}").mkdirs()
-        }
-    }
-    doLast {
-        configurations.natives.resolvedConfiguration.resolvedArtifacts.each { artifact ->
-            def name = artifact.name
-            def targetAbi = null
-            if (name.contains('natives-arm64-v8a')) targetAbi = 'arm64-v8a'
-            else if (name.contains('natives-armeabi-v7a')) targetAbi = 'armeabi-v7a'
-            else if (name.contains('natives-x86_64')) targetAbi = 'x86_64'
-            else if (name.contains('natives-x86')) targetAbi = 'x86'
-
-            if (targetAbi != null) {
-                def outputDir = file("libs/${targetAbi}")
-                copy {
-                    from zipTree(artifact.file)
-                    into outputDir
-                    include '**/*.so'
-                    // 将所有 .so 文件直接放到输出目录，忽略中间文件夹
-                    eachFile { fcd ->
-                        fcd.relativePath = new RelativePath(true, fcd.name)
-                    }
-                    includeEmptyDirs(false)
-                }
-                println "✅ Copied libgdx.so to ${outputDir}"
-            }
-        }
-    }
-}
-
-afterEvaluate {
-    tasks.matching { it.name == 'preBuild' }.configureEach {
-        it.dependsOn('copyAndroidNatives')
-    }
-}
+// 注意：已移除所有自动复制/清理任务，因为它们会干扰手动添加的 .so 文件。
+// 请确保将 libgdx.so 手动放置在正确的位置：
+//   android/src/main/jniLibs/arm64-v8a/libgdx.so
+// 其他 ABI 如果需要，也请手动放置。
