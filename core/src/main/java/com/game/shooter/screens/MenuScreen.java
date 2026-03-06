@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ColorDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -73,19 +74,6 @@ public class MenuScreen extends ScreenAdapter {
         titleFont.getData().setScale(2.2f);
     }
 
-    /** 创建纯色 Drawable */
-    private Drawable solidDrawable(Color color, float minWidth, float minHeight) {
-        Pixmap pix = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pix.setColor(color);
-        pix.fill();
-        Texture tex = new Texture(pix);
-        pix.dispose();
-        TextureRegionDrawable drawable = new TextureRegionDrawable(new TextureRegion(tex));
-        drawable.setMinWidth(minWidth);
-        drawable.setMinHeight(minHeight);
-        return drawable;
-    }
-
     private Skin createSkin() {
         Skin skin = new Skin();
 
@@ -93,11 +81,18 @@ public class MenuScreen extends ScreenAdapter {
         skin.add("default-font", uiFont);
         skin.add("title-font", titleFont);
 
-        // 添加各种背景 Drawable
-        skin.add("input-bg", solidDrawable(new Color(0.15f, 0.2f, 0.35f, 0.9f), 200, 60));
-        skin.add("input-bg-focused", solidDrawable(new Color(0.2f, 0.25f, 0.45f, 1f), 200, 60));
+        // 使用 ColorDrawable 作为背景，无需纹理，绝对可靠
+        ColorDrawable inputBg = new ColorDrawable(new Color(0.15f, 0.2f, 0.35f, 0.9f));
+        inputBg.setMinWidth(200);
+        inputBg.setMinHeight(60);
+        skin.add("input-bg", inputBg);
 
-        // 光标
+        ColorDrawable inputBgFocused = new ColorDrawable(new Color(0.2f, 0.25f, 0.45f, 1f));
+        inputBgFocused.setMinWidth(200);
+        inputBgFocused.setMinHeight(60);
+        skin.add("input-bg-focused", inputBgFocused);
+
+        // 光标（仍然需要纹理，但光标很小，用纯色纹理）
         Pixmap cursorPix = new Pixmap(3, 20, Pixmap.Format.RGBA8888);
         cursorPix.setColor(Color.WHITE);
         cursorPix.fill();
@@ -114,8 +109,15 @@ public class MenuScreen extends ScreenAdapter {
         skin.add("default", tfStyle);
 
         // 蓝色按钮
-        skin.add("blue-up", solidDrawable(new Color(0.2f, 0.5f, 0.9f, 1f), 200, 70));
-        skin.add("blue-down", solidDrawable(new Color(0.15f, 0.4f, 0.7f, 1f), 200, 70));
+        ColorDrawable blueUp = new ColorDrawable(new Color(0.2f, 0.5f, 0.9f, 1f));
+        blueUp.setMinWidth(200);
+        blueUp.setMinHeight(70);
+        skin.add("blue-up", blueUp);
+
+        ColorDrawable blueDown = new ColorDrawable(new Color(0.15f, 0.4f, 0.7f, 1f));
+        blueDown.setMinWidth(200);
+        blueDown.setMinHeight(70);
+        skin.add("blue-down", blueDown);
 
         TextButton.TextButtonStyle blueStyle = new TextButton.TextButtonStyle();
         blueStyle.font = skin.getFont("default-font");
@@ -125,8 +127,15 @@ public class MenuScreen extends ScreenAdapter {
         skin.add("blue", blueStyle);
 
         // 绿色按钮
-        skin.add("green-up", solidDrawable(new Color(0.15f, 0.7f, 0.2f, 1f), 200, 70));
-        skin.add("green-down", solidDrawable(new Color(0.1f, 0.5f, 0.15f, 1f), 200, 70));
+        ColorDrawable greenUp = new ColorDrawable(new Color(0.15f, 0.7f, 0.2f, 1f));
+        greenUp.setMinWidth(200);
+        greenUp.setMinHeight(70);
+        skin.add("green-up", greenUp);
+
+        ColorDrawable greenDown = new ColorDrawable(new Color(0.1f, 0.5f, 0.15f, 1f));
+        greenDown.setMinWidth(200);
+        greenDown.setMinHeight(70);
+        skin.add("green-down", greenDown);
 
         TextButton.TextButtonStyle greenStyle = new TextButton.TextButtonStyle();
         greenStyle.font = skin.getFont("default-font");
@@ -135,7 +144,7 @@ public class MenuScreen extends ScreenAdapter {
         greenStyle.down = skin.getDrawable("green-down");
         skin.add("green", greenStyle);
 
-        // Label样式
+        // Label 样式
         Label.LabelStyle labelStyle = new Label.LabelStyle();
         labelStyle.font = skin.getFont("default-font");
         labelStyle.fontColor = Color.WHITE;
@@ -191,8 +200,6 @@ public class MenuScreen extends ScreenAdapter {
         statusLabel.setColor(Color.YELLOW);
         root.add(statusLabel).colspan(2).row();
     }
-
-    // 以下事件处理方法与之前完全相同，略...
 
     private void onCreateRoom() {
         String url = serverUrlField.getText().trim();
