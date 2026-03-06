@@ -11,7 +11,6 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -19,9 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
-import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
-import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.game.shooter.Config;
 import com.game.shooter.ShooterGame;
@@ -37,12 +34,8 @@ public class MenuScreen extends ScreenAdapter {
     private TextField serverUrlField;
     private TextField roomCodeField;
     private Label statusLabel;
-
-    // 字体
     private BitmapFont uiFont;
     private BitmapFont titleFont;
-
-    // 背景纹理
     private Texture backgroundTexture;
 
     public MenuScreen(ShooterGame game) {
@@ -50,20 +43,15 @@ public class MenuScreen extends ScreenAdapter {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // 加载背景图（如果存在）
-        if (Gdx.files.internal("bg.jpg").exists()) {
-            backgroundTexture = new Texture("bg.jpg");
-        } else {
-            // 如果没有背景图，生成渐变纹理（从深蓝到黑色）
-            Pixmap bgPixmap = new Pixmap(1, 256, Pixmap.Format.RGBA8888);
-            for (int y = 0; y < 256; y++) {
-                float t = y / 255f;
-                bgPixmap.setColor(0.1f, 0.15f, 0.3f + t * 0.2f, 1f);
-                bgPixmap.drawPixel(0, y);
-            }
-            backgroundTexture = new Texture(bgPixmap);
-            bgPixmap.dispose();
+        // 创建渐变背景（如果没有图片）
+        Pixmap bgPix = new Pixmap(1, 256, Pixmap.Format.RGBA8888);
+        for (int y = 0; y < 256; y++) {
+            float t = y / 255f;
+            bgPix.setColor(0.1f, 0.15f, 0.3f + t * 0.2f, 1f);
+            bgPix.drawPixel(0, y);
         }
+        backgroundTexture = new Texture(bgPix);
+        bgPix.dispose();
 
         generateFonts();
         skin = createSkin();
@@ -85,72 +73,72 @@ public class MenuScreen extends ScreenAdapter {
         titleFont.getData().setScale(2.2f);
     }
 
+    private Drawable createRoundedRectDrawable(int width, int height, Color bgColor, Color borderColor, int borderRadius) {
+        Pixmap pix = new Pixmap(width, height, Pixmap.Format.RGBA8888);
+        pix.setColor(bgColor);
+        pix.fillRectangle(0, 0, width, height);
+        // 简单圆角效果：可以画四个角，但这里简化，直接填充矩形后画边框
+        pix.setColor(borderColor);
+        for (int i = 0; i < 2; i++) {
+            pix.drawRectangle(i, i, width - i * 2, height - i * 2);
+        }
+        // 注：真正的圆角需要更复杂的处理，但这里作为示例，边框矩形已足够
+        Texture tex = new Texture(pix);
+        pix.dispose();
+        return new TextureRegionDrawable(new TextureRegion(tex));
+    }
+
     private Skin createSkin() {
         Skin skin = new Skin();
 
-        // 添加字体
+        // 字体
         skin.add("default-font", uiFont);
         skin.add("title-font", titleFont);
 
-        // 基础白色纹理（用于生成九宫格或纯色）
-        Pixmap whitePix = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        whitePix.setColor(Color.WHITE);
-        whitePix.fill();
-        skin.add("white", new Texture(whitePix));
-        whitePix.dispose();
+        // 基础白色纹理（用于纯色背景）
+        Pixmap white = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        white.setColor(Color.WHITE);
+        white.fill();
+        skin.add("white", new TextureRegionDrawable(new Texture(white)));
+        white.dispose();
 
-        // ========== 输入框样式 ==========
-        // 创建圆角矩形九宫格（4个角是圆角）
-        Pixmap inputBgPix = new Pixmap(20, 20, Pixmap.Format.RGBA8888);
-        inputBgPix.setColor(0.15f, 0.2f, 0.35f, 0.9f); // 半透明深蓝
-        inputBgPix.fillRectangle(2, 2, 16, 16);
-        // 描边
-        inputBgPix.setColor(0.4f, 0.7f, 1f, 0.8f);
-        for (int i = 0; i < 2; i++) {
-            inputBgPix.drawRectangle(i, i, 20 - i * 2, 20 - i * 2);
-        }
-        NinePatchDrawable inputBg = new NinePatchDrawable(new com.badlogic.gdx.graphics.g2d.NinePatch(new Texture(inputBgPix), 5, 5, 5, 5));
-        inputBg.setMinWidth(200);
-        inputBg.setMinHeight(60);
+        // ===== 输入框背景 =====
+        Drawable inputBg = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.2f, 0.35f, 0.9f), new Color(0.4f, 0.7f, 1f, 0.8f), 2);
+        ((TextureRegionDrawable)inputBg).setMinWidth(200);
+        ((TextureRegionDrawable)inputBg).setMinHeight(60);
         skin.add("input-bg", inputBg);
-        inputBgPix.dispose();
+
+        Drawable inputBgFocused = createRoundedRectDrawable(10, 10, new Color(0.2f, 0.25f, 0.45f, 1f), Color.WHITE, 2);
+        ((TextureRegionDrawable)inputBgFocused).setMinWidth(200);
+        ((TextureRegionDrawable)inputBgFocused).setMinHeight(60);
+        skin.add("input-bg-focused", inputBgFocused);
+
+        // 光标
+        Pixmap cursorPix = new Pixmap(3, 20, Pixmap.Format.RGBA8888);
+        cursorPix.setColor(Color.WHITE);
+        cursorPix.fill();
+        skin.add("cursor", new TextureRegionDrawable(new Texture(cursorPix)));
+        cursorPix.dispose();
 
         TextField.TextFieldStyle tfStyle = new TextField.TextFieldStyle();
         tfStyle.font = skin.getFont("default-font");
         tfStyle.fontColor = Color.WHITE;
         tfStyle.messageFontColor = new Color(0.7f, 0.7f, 0.7f, 0.7f);
         tfStyle.background = skin.getDrawable("input-bg");
-        tfStyle.focusedBackground = skin.getDrawable("input-bg"); // 可以用同一个，或不同颜色
-        // 游标（白色竖线）
-        Pixmap cursorPix = new Pixmap(3, 20, Pixmap.Format.RGBA8888);
-        cursorPix.setColor(Color.WHITE);
-        cursorPix.fill();
-        skin.add("cursor", new TextureRegionDrawable(new Texture(cursorPix)));
-        cursorPix.dispose();
+        tfStyle.focusedBackground = skin.getDrawable("input-bg-focused");
         tfStyle.cursor = skin.getDrawable("cursor");
         skin.add("default", tfStyle);
 
-        // ========== 按钮样式 ==========
-        // 蓝色按钮（创建房间）
-        Pixmap blueBtnUp = new Pixmap(30, 30, Pixmap.Format.RGBA8888);
-        blueBtnUp.setColor(0.2f, 0.5f, 0.9f, 1f);
-        blueBtnUp.fillCircle(15, 15, 15);
-        blueBtnUp.setColor(1f, 1f, 1f, 0.4f);
-        blueBtnUp.fillCircle(12, 18, 4); // 高光
-        NinePatchDrawable blueUp = new NinePatchDrawable(new com.badlogic.gdx.graphics.g2d.NinePatch(new Texture(blueBtnUp), 10, 10, 10, 10));
-        blueUp.setMinWidth(200);
-        blueUp.setMinHeight(70);
+        // ===== 蓝色按钮 =====
+        Drawable blueUp = createRoundedRectDrawable(10, 10, new Color(0.2f, 0.5f, 0.9f, 1f), Color.WHITE, 2);
+        ((TextureRegionDrawable)blueUp).setMinWidth(200);
+        ((TextureRegionDrawable)blueUp).setMinHeight(70);
         skin.add("blue-up", blueUp);
-        blueBtnUp.dispose();
 
-        Pixmap blueBtnDown = new Pixmap(30, 30, Pixmap.Format.RGBA8888);
-        blueBtnDown.setColor(0.15f, 0.4f, 0.7f, 1f);
-        blueBtnDown.fillCircle(15, 15, 15);
-        NinePatchDrawable blueDown = new NinePatchDrawable(new com.badlogic.gdx.graphics.g2d.NinePatch(new Texture(blueBtnDown), 10, 10, 10, 10));
-        blueDown.setMinWidth(200);
-        blueDown.setMinHeight(70);
+        Drawable blueDown = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.4f, 0.7f, 1f), Color.WHITE, 2);
+        ((TextureRegionDrawable)blueDown).setMinWidth(200);
+        ((TextureRegionDrawable)blueDown).setMinHeight(70);
         skin.add("blue-down", blueDown);
-        blueBtnDown.dispose();
 
         TextButton.TextButtonStyle blueStyle = new TextButton.TextButtonStyle();
         blueStyle.font = skin.getFont("default-font");
@@ -159,26 +147,16 @@ public class MenuScreen extends ScreenAdapter {
         blueStyle.down = skin.getDrawable("blue-down");
         skin.add("blue", blueStyle);
 
-        // 绿色按钮（加入房间）
-        Pixmap greenBtnUp = new Pixmap(30, 30, Pixmap.Format.RGBA8888);
-        greenBtnUp.setColor(0.15f, 0.7f, 0.2f, 1f);
-        greenBtnUp.fillCircle(15, 15, 15);
-        greenBtnUp.setColor(1f, 1f, 1f, 0.4f);
-        greenBtnUp.fillCircle(12, 18, 4);
-        NinePatchDrawable greenUp = new NinePatchDrawable(new com.badlogic.gdx.graphics.g2d.NinePatch(new Texture(greenBtnUp), 10, 10, 10, 10));
-        greenUp.setMinWidth(200);
-        greenUp.setMinHeight(70);
+        // ===== 绿色按钮 =====
+        Drawable greenUp = createRoundedRectDrawable(10, 10, new Color(0.15f, 0.7f, 0.2f, 1f), Color.WHITE, 2);
+        ((TextureRegionDrawable)greenUp).setMinWidth(200);
+        ((TextureRegionDrawable)greenUp).setMinHeight(70);
         skin.add("green-up", greenUp);
-        greenBtnUp.dispose();
 
-        Pixmap greenBtnDown = new Pixmap(30, 30, Pixmap.Format.RGBA8888);
-        greenBtnDown.setColor(0.1f, 0.5f, 0.15f, 1f);
-        greenBtnDown.fillCircle(15, 15, 15);
-        NinePatchDrawable greenDown = new NinePatchDrawable(new com.badlogic.gdx.graphics.g2d.NinePatch(new Texture(greenBtnDown), 10, 10, 10, 10));
-        greenDown.setMinWidth(200);
-        greenDown.setMinHeight(70);
+        Drawable greenDown = createRoundedRectDrawable(10, 10, new Color(0.1f, 0.5f, 0.15f, 1f), Color.WHITE, 2);
+        ((TextureRegionDrawable)greenDown).setMinWidth(200);
+        ((TextureRegionDrawable)greenDown).setMinHeight(70);
         skin.add("green-down", greenDown);
-        greenBtnDown.dispose();
 
         TextButton.TextButtonStyle greenStyle = new TextButton.TextButtonStyle();
         greenStyle.font = skin.getFont("default-font");
@@ -187,7 +165,7 @@ public class MenuScreen extends ScreenAdapter {
         greenStyle.down = skin.getDrawable("green-down");
         skin.add("green", greenStyle);
 
-        // Label样式
+        // Label 样式
         Label.LabelStyle labelStyle = new Label.LabelStyle();
         labelStyle.font = skin.getFont("default-font");
         labelStyle.fontColor = Color.WHITE;
@@ -197,16 +175,13 @@ public class MenuScreen extends ScreenAdapter {
     }
 
     private void buildUI() {
-        // 主布局表格
         Table root = new Table();
         root.setFillParent(true);
         root.center();
         root.pad(50);
         stage.addActor(root);
 
-        // 标题（带发光效果：加一层半透明副本）
-        Label titleShadow = new Label("3人射击对战", new Label.LabelStyle(skin.getFont("title-font"), new Color(0.2f, 0.2f, 0.3f, 0.5f)));
-        root.add(titleShadow).colspan(2).padBottom(5).row();
+        // 标题
         Label title = new Label("3人射击对战", new Label.LabelStyle(skin.getFont("title-font"), new Color(0.4f, 0.9f, 1f, 1f)));
         root.add(title).colspan(2).padBottom(10).row();
 
@@ -216,7 +191,7 @@ public class MenuScreen extends ScreenAdapter {
         root.add(subtitle).colspan(2).padBottom(50).row();
 
         // 服务器地址
-        root.add(makeLabel("服务器地址:")).right().padRight(15);
+        root.add(new Label("服务器地址:", skin)).right().padRight(15);
         serverUrlField = new TextField(Config.DEFAULT_SERVER_URL, skin);
         serverUrlField.setMessageText("https://your-app.up.railway.app");
         root.add(serverUrlField).width(500).height(65).padBottom(25).row();
@@ -230,12 +205,12 @@ public class MenuScreen extends ScreenAdapter {
         root.add(createBtn).colspan(2).width(400).height(80).padBottom(30).row();
 
         // 分隔线
-        Label orLabel = makeLabel("—— 或者加入朋友的房间 ——");
+        Label orLabel = new Label("—— 或者加入朋友的房间 ——", skin);
         orLabel.setColor(new Color(0.7f, 0.7f, 0.7f, 0.8f));
         root.add(orLabel).colspan(2).padBottom(25).row();
 
         // 房间码输入
-        root.add(makeLabel("房 间 码:")).right().padRight(15);
+        root.add(new Label("房 间 码:", skin)).right().padRight(15);
         roomCodeField = new TextField("", skin);
         roomCodeField.setMessageText("输入6位房间码 (如: AB12CD)");
         roomCodeField.setMaxLength(6);
@@ -255,14 +230,13 @@ public class MenuScreen extends ScreenAdapter {
         root.add(statusLabel).colspan(2).row();
     }
 
-    private Label makeLabel(String text) {
-        return new Label(text, skin);
-    }
-
-    // 事件处理方法（与之前相同）
+    // 以下事件处理方法保持不变
     private void onCreateRoom() {
         String url = serverUrlField.getText().trim();
-        if (url.isEmpty()) { setStatus("请先填写服务器地址！", Color.RED); return; }
+        if (url.isEmpty()) {
+            setStatus("请先填写服务器地址！", Color.RED);
+            return;
+        }
         setStatus("正在连接服务器...", Color.YELLOW);
         game.socketManager.connectAndCreate(url, new SocketManager.RoomListener() {
             @Override public void onRoomCreated(String roomCode, JSONObject data, String playerId) {
@@ -344,6 +318,6 @@ public class MenuScreen extends ScreenAdapter {
     public void dispose() {
         stage.dispose();
         skin.dispose();
-        if (backgroundTexture != null) backgroundTexture.dispose();
+        backgroundTexture.dispose();
     }
 }
