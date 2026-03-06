@@ -31,15 +31,11 @@ jobs:
       - name: 📝 Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
       
-      # 列出 natives 依赖（可选，保留用于调试）
-      - name: 📋 List natives dependencies
-        run: ./gradlew :android:dependencies --configuration natives
-      
-      # 验证 libs 目录内容（确认手动添加的 .so 文件存在）
+      # 验证原生库目录内容（确认手动添加的 .so 文件存在）
       - name: 🔍 Verify native libraries
         run: |
-          echo "=== Contents of android/libs ==="
-          find android/libs -type f 2>/dev/null || echo "No files found in android/libs"
+          echo "=== Contents of android/src/main/jniLibs ==="
+          find android/src/main/jniLibs -type f 2>/dev/null || echo "No files found in android/src/main/jniLibs"
           echo "=== If libgdx.so is not listed, check your git push ==="
       
       - name: 🔨 Build
