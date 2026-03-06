@@ -4,11 +4,14 @@ sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
 dependencies {
-    // LibGDX 核心库（只保留一次，删除重复行）
+    // LibGDX 核心库
     api "com.badlogicgames.gdx:gdx:1.12.0"
 
-    // Socket.IO 网络库（排除旧版 org.json，避免与 Android 内置冲突）
+    // Socket.IO 网络库（排除旧版 org.json）
     api('io.socket:socket.io-client:2.1.0') {
         exclude group: 'org.json', module: 'json'
     }
+
+    // 添加 JSON 支持（必须！）
+    implementation 'org.json:json:20230227'
 }
