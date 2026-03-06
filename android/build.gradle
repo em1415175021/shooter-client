@@ -71,9 +71,16 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:1.12.0:natives-x86_64"
 }
 
-// ===== 修复后的原生库复制任务 =====
+// ===== 修复后的原生库复制任务（增强 cleanLibs 健壮性） =====
 tasks.register('cleanLibs') {
     doFirst {
+        // 确保 libs 目录存在，避免 FileNotFoundException
+        def libsDir = file('libs')
+        if (!libsDir.exists()) {
+            libsDir.mkdirs()
+            println "📁 Created libs directory"
+        }
+        // 删除所有 .so 文件
         delete fileTree('libs') {
             include '**/*.so'
         }
